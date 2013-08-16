@@ -6,7 +6,4 @@ using System.Threading.Tasks;
 
 namespace Ded.Wordox
 {
-    public class Board
-    {
-    }
 }

@@ -98,6 +98,10 @@ namespace Ded.Wordox
         #region Fields
         private readonly HashSet<T> wrapped;
         #endregion
+        public ConstantSet()
+            : this(new T[0])
+        {
+        }
         public ConstantSet(IEnumerable<T> items)
         {
             wrapped = new HashSet<T>(items);
@@ -183,12 +187,18 @@ namespace Ded.Wordox
             return GetEnumerator();
         }
     }
-    public static class ISetExtensions
+    static class ISetExtensions
     {
         public static void AddRange<T>(this ISet<T> set, IEnumerable<T> items)
         {
             foreach (T item in items)
                 set.Add(item);
+        }
+        public static ConstantSet<T> ToConstant<T>(this ISet<T> set)
+        {
+            if (set is ConstantSet<T>)
+                return (ConstantSet<T>)set;
+            return new ConstantSet<T>(set);
         }
     }
 }
