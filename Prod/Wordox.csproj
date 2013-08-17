@@ -40,6 +40,8 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -47,10 +49,28 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BoardUserControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="BoardUserControl.Designer.cs">
+      <DependentUpon>BoardUserControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CellUserControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="CellUserControl.Designer.cs">
+      <DependentUpon>CellUserControl.cs</DependentUpon>
+    </Compile>
     <Compile Include="Common.cs" />
     <Compile Include="WordDownloader.cs" />
     <Compile Include="Wordox.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WordoxForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="WordoxForm.Designer.cs">
+      <DependentUpon>WordoxForm.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\key.snk">
@@ -58,7 +78,16 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="BoardUserControl.resx">
+      <DependentUpon>BoardUserControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CellUserControl.resx">
+      <DependentUpon>CellUserControl.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Resources\fr.txt" />
+    <EmbeddedResource Include="WordoxForm.resx">
+      <DependentUpon>WordoxForm.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
