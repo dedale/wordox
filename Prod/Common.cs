@@ -38,6 +38,10 @@ namespace Ded.Wordox
             : this(new List<T>())
         {
         }
+        public ConstantList(T item)
+            : this(new List<T> { item })
+        {
+        }
         public ConstantList(IList<T> seq)
         {
             wrapped = new ReadOnlyCollection<T>(seq);
@@ -103,6 +107,10 @@ namespace Ded.Wordox
         #endregion
         public ConstantSet()
             : this(new T[0])
+        {
+        }
+        public ConstantSet(T item)
+            : this(new[] { item })
         {
         }
         public ConstantSet(IEnumerable<T> items)

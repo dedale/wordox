@@ -6,23 +6,37 @@ using System.Threading.Tasks;
 
 namespace Ded.Wordox
 {
+    class LetterPlay
+    {
+        #region Fields
+        private readonly Cell cell;
+        private readonly char letter;
+        #endregion
+        public LetterPlay(Cell cell, char letter)
+        {
+            this.cell = cell;
+            this.letter = letter;
+        }
+        public Cell Cell { get { return cell; } }
+        public char Letter { get { return letter; } }
+    }
     class PlayPath
     {
         #region Fields
         private readonly WordPart main;
         private readonly WordPartCollection extras;
-        private readonly string played;
+        private readonly ConstantList<LetterPlay> played;
         private readonly ConstantSet<char> pending;
         #endregion
-        public PlayPath(WordPart main, char played, ConstantSet<char> pending)
-            : this(main, WordPartCollection.Empty, played.ToString(), pending)
+        public PlayPath(WordPart main, LetterPlay letter, ConstantSet<char> pending)
+            : this(main, WordPartCollection.Empty, new ConstantList<LetterPlay>(letter), pending)
         {
         }
-        public PlayPath(WordPart main, WordPart extra, char played, ConstantSet<char> pending)
-            : this(main, new WordPartCollection(extra), played.ToString(), pending)
+        public PlayPath(WordPart main, WordPart extra, LetterPlay letter, ConstantSet<char> pending)
+            : this(main, new WordPartCollection(extra), new ConstantList<LetterPlay>(letter), pending)
         {
         }
-        public PlayPath(WordPart main, WordPartCollection extras, string played, ConstantSet<char> pending)
+        public PlayPath(WordPart main, WordPartCollection extras, ConstantList<LetterPlay> played, ConstantSet<char> pending)
         {
             this.main = main;
             this.extras = extras;
@@ -31,7 +45,7 @@ namespace Ded.Wordox
         }
         public WordPart Main { get { return main; } }
         public WordPartCollection Extras { get { return extras; } }
-        public string Played { get { return played; } }
+        public ConstantList<LetterPlay> Played { get { return played; } }
         public ConstantSet<char> Pending { get { return pending; } }
     }
     class WordPartPair
@@ -96,7 +110,8 @@ namespace Ded.Wordox
                             var pending = new HashSet<char>(rack.Letters);
                             pending.Remove(letter);
                             bool isValid = mainPart.Word.Length == 1 || graph.IsValid(mainPart.Word);
-                            var path = extraPart == null ? new PlayPath(mainPart, letter, pending.ToConstant()) : new PlayPath(mainPart, extraPart, letter, pending.ToConstant());
+                            var played = new LetterPlay(cell, letter);
+                            var path = extraPart == null ? new PlayPath(mainPart, played, pending.ToConstant()) : new PlayPath(mainPart, extraPart, played, pending.ToConstant());
                             if (isValid)
                                 Debug(path);
                             paths.Add(mainPart, path);
@@ -142,7 +157,7 @@ namespace Ded.Wordox
             if (path.Extras.Count > 0)
                 foreach (WordPart extra in path.Extras)
                     sb.AppendFormat(" [{0} {1} {2}]", extra.First, extra.Direction, extra.Word);
-            sb.AppendFormat(" {0}", path.Played);
+            sb.AppendFormat(" {0}", string.Join(string.Empty, (from lp in path.Played select lp.Letter).ToArray()));
             if (path.Pending.Count > 0)
                 sb.AppendFormat(" {0}", new string(path.Pending.ToArray()));
             Console.WriteLine(sb);
@@ -209,9 +224,14 @@ namespace Ded.Wordox
                         var extras = new List<WordPart>(path.Extras);
                         if (extraPart != null)
                             extras.Add(extraPart);
-                        string played = fix == Fix.Prefix ? letter + path.Played : path.Played + letter;
+                        var letterPlay = new LetterPlay(cell, letter);
+                        var played = new List<LetterPlay>(path.Played);
+                        if (fix == Fix.Prefix)
+                            played.Insert(0, letterPlay);
+                        else
+                            played.Add(letterPlay);
                         bool isValid = mainPart.Word.Length == 1 || graph.IsValid(mainPart.Word);
-                        var newPath = new PlayPath(mainPart, new WordPartCollection(extras.ToConstant()), played, pending.ToConstant());
+                        var newPath = new PlayPath(mainPart, new WordPartCollection(extras.ToConstant()), played.ToConstant(), pending.ToConstant());
                         if (isValid)
                             Debug(newPath);
                         newPaths.Add(mainPart, newPath);
