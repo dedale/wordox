@@ -202,6 +202,18 @@ namespace Ded.Wordox
                     throw new ArgumentException(string.Format("Unknown {0} fixes", fixes), "fixes");
             }
         }
+        internal char GetLetter(double d)
+        {
+            int value = Convert.ToInt32(d * total);
+            char c = 'A';
+            while (value > ranges[c] && c < 'Z')
+            {
+                if (value < ranges[c] + counts[c])
+                    break;
+                c++;
+            }
+            return c;
+        }
         #endregion
         public WordGraph(IEnumerable<string> words)
         {
@@ -286,18 +298,6 @@ namespace Ded.Wordox
         public static WordGraph French
         {
             get { return french.Value; }
-        }
-        internal char GetLetter(double d)
-        {
-            int value = Convert.ToInt32(d * total);
-            char c = 'A';
-            while (value > ranges[c] && c < 'Z')
-            {
-                if (value < ranges[c] + counts[c])
-                    break;
-                c++;
-            }
-            return c;
         }
         public string GetRandom()
         {

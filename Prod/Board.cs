@@ -138,9 +138,14 @@ namespace Ded.Wordox
         #endregion
         #region Fields
         private readonly char[,] board;
-        private readonly HashSet<Cell> cells;
+        private readonly ConstantSet<Cell> cells;
         #endregion
         #region Private stuff
+        private Board(char[,] board, ConstantSet<Cell> cells)
+        {
+            this.board = board;
+            this.cells = cells;
+        }
         private bool Contains(ConstantSet<Cell> start, IEnumerable<Cell> played)
         {
             foreach (Cell cell in played)
@@ -150,9 +155,8 @@ namespace Ded.Wordox
         }
         #endregion
         public Board()
+            : this(new char[Height, Width], new ConstantSet<Cell>())
         {
-            board = new char[Height, Width];
-            cells = new HashSet<Cell>();
         }
         public event CellUpdatedEventHandler CellUpdated;
         public ConstantSet<Cell> GetStartCells()
@@ -174,7 +178,7 @@ namespace Ded.Wordox
             }
             return result.ToConstant();
         }
-        public void Play(string word, Cell cell, Direction direction)
+        public Board Play(string word, Cell cell, Direction direction)
         {
             var start = new ConstantSet<Cell>(GetStartCells());
             var list = new List<Cell>();
@@ -188,15 +192,23 @@ namespace Ded.Wordox
             }
             if (!Contains(start, list))
                 throw new ArgumentException(string.Format("Cannot play {0} at {1}", word, cell));
+            var newBoard = new char[Height, Width];
+            for (int i = 0; i < Height; i++)
+                for (int j = 0; j < Width; j++)
+                    newBoard[i, j] = board[i, j];
+            var newCells = new HashSet<Cell>(cells);
             for (int i = 0; i < word.Length; i++)
             {
                 Cell c = list[i];
                 char letter = word[i];
-                board[c.Row, c.Column] = letter;
-                cells.Add(c);
+                newBoard[c.Row, c.Column] = letter;
+                newCells.Add(c);
                 if (CellUpdated != null)
                     CellUpdated(this, new CellUpdatedEventArgs(c, letter));
             }
+            var result = new Board(newBoard, newCells.ToConstant());
+            result.CellUpdated = CellUpdated;
+            return result;
         }
         public WordPart GetBeforePart(Cell cell, Direction direction)
         {
@@ -338,6 +350,7 @@ namespace Ded.Wordox
         private static readonly WordPartCollection empty = new WordPartCollection(new ConstantList<WordPart>());
         private readonly ConstantList<WordPart> parts;
         #endregion
+        #region Private stuff
         private static void Add(Dictionary<Direction, Dictionary<Cell, WordPart>> index, WordPart part, Func<WordPart, Cell> func)
         {
             Dictionary<Cell, WordPart> map;
@@ -348,6 +361,7 @@ namespace Ded.Wordox
             }
             map.Add(func(part), part);
         }
+        #endregion
         public static WordPartCollection Empty { get { return empty; } }
         public WordPartCollection(WordPart part)
             : this(new ConstantList<WordPart>(new[] { part }))
