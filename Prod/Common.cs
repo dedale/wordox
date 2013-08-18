@@ -301,4 +301,12 @@ namespace Ded.Wordox
             return new string(letters.ToArray());
         }
     }
+    static class IDictionaryExtensions
+    {
+        public static void AddRange<K, V>(this IDictionary<K, V> map, IDictionary<K, V> other)
+        {
+            foreach (KeyValuePair<K, V> kv in other)
+                map.Add(kv.Key, kv.Value);
+        }
+    }
 }

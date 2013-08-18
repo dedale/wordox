@@ -92,6 +92,26 @@ namespace Ded.Wordox
         {
             return !(c1 == c2);
         }
+        public bool IsStar
+        {
+            get
+            {
+                return row + column == 4
+                    || row - column == 4
+                    || column - row == 4
+                    || row + column == 12;
+            }
+        }
+        public bool IsVortex
+        {
+            get
+            {
+                return row == 0 && column == 0
+                    || row == 0 && column == Board.Width - 1
+                    || row == Board.Height - 1 && column == 0
+                    || row == Board.Height - 1 && column == Board.Width - 1;
+            }
+        }
     }
     class CellUpdatedEventArgs : EventArgs
     {
@@ -315,6 +335,7 @@ namespace Ded.Wordox
     class WordPartCollection : IEnumerable<WordPart>
     {
         #region Fields
+        private static readonly WordPartCollection empty = new WordPartCollection(new ConstantList<WordPart>());
         private readonly ConstantList<WordPart> parts;
         #endregion
         private static void Add(Dictionary<Direction, Dictionary<Cell, WordPart>> index, WordPart part, Func<WordPart, Cell> func)
@@ -326,6 +347,11 @@ namespace Ded.Wordox
                 index.Add(part.Direction, map);
             }
             map.Add(func(part), part);
+        }
+        public static WordPartCollection Empty { get { return empty; } }
+        public WordPartCollection(WordPart part)
+            : this(new ConstantList<WordPart>(new[] { part }))
+        {
         }
         public WordPartCollection(ConstantList<WordPart> parts)
         {
