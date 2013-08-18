@@ -178,29 +178,29 @@ namespace Ded.Wordox
             }
             return result.ToConstant();
         }
-        public Board Play(string word, Cell cell, Direction direction)
+        public Board Play(WordPart part)
         {
             var start = new ConstantSet<Cell>(GetStartCells());
             var list = new List<Cell>();
-            list.Add(cell);
-            var current = cell;
-            for (int i = 1; i < word.Length; i++)
+            list.Add(part.First);
+            var current = part.First;
+            for (int i = 1; i < part.Word.Length; i++)
             {
-                if (!current.TryGetNext(direction, out current))
-                    throw new ArgumentException(string.Format("Cannot play {0} at {1}", word, cell));
+                if (!current.TryGetNext(part.Direction, out current))
+                    throw new ArgumentException(string.Format("Cannot play {0} at {1}", part.Word, part.First));
                 list.Add(current);
             }
             if (!Contains(start, list))
-                throw new ArgumentException(string.Format("Cannot play {0} at {1}", word, cell));
+                throw new ArgumentException(string.Format("Cannot play {0} at {1}", part.Word, part.First));
             var newBoard = new char[Height, Width];
             for (int i = 0; i < Height; i++)
                 for (int j = 0; j < Width; j++)
                     newBoard[i, j] = board[i, j];
             var newCells = new HashSet<Cell>(cells);
-            for (int i = 0; i < word.Length; i++)
+            for (int i = 0; i < part.Word.Length; i++)
             {
                 Cell c = list[i];
-                char letter = word[i];
+                char letter = part.Word[i];
                 newBoard[c.Row, c.Column] = letter;
                 newCells.Add(c);
                 if (CellUpdated != null)

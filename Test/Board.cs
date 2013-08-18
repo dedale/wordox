@@ -116,7 +116,6 @@ namespace Ded.Wordox
             }
         }
     }
-
     [TestFixture]
     public class BoardTest
     {
@@ -127,6 +126,18 @@ namespace Ded.Wordox
             Assert.AreEqual(1, start.Count);
             Assert.AreEqual(Board.Center, start[0].Row);
             Assert.AreEqual(Board.Center, start[0].Column);
+        }
+        private bool OutOfRange(string word, int row, int column, Direction direction)
+        {
+            switch (direction)
+            {
+                case Direction.Bottom:
+                    return row + word.Length > Board.Height;
+                case Direction.Right:
+                    return column + word.Length > Board.Width;
+                default:
+                    throw new ArgumentException(string.Format("Unknown direction : {0}", direction), "direction");
+            }
         }
         private bool CanPlay(string word, int row, int column, Direction direction)
         {
@@ -151,9 +162,12 @@ namespace Ded.Wordox
                                          [Values(Direction.Bottom, Direction.Right)] Direction direction)
         {
             var board = new Board();
+            bool outOfRange = OutOfRange(word, row, column, direction);
             bool canPlay = CanPlay(word, row, column, direction);
-            Action action = () => board = board.Play(word, new Cell(row, column), direction);
-            if (!canPlay)
+            Action action = () => board = board.Play(new WordPart(word, new Cell(row, column), direction));
+            if (outOfRange)
+                Assert.Throws<IndexOutOfRangeException>(new TestDelegate(action));
+            else if (!canPlay)
                 Assert.Throws<ArgumentException>(new TestDelegate(action));
             else
                 action();
@@ -167,17 +181,19 @@ namespace Ded.Wordox
         public void TestGetStartCellsSecond(string word, int row, int column, Direction direction, int count)
         {
             var board = new Board();
-            board = board.Play(word, new Cell(row, column), direction);
+            var part = new WordPart(word, new Cell(row, column), direction);
+            board = board.Play(part);
             var cells = board.GetStartCells();
             Assert.AreEqual(count, cells.Count);
         }
         [Test] public void TestPlayAll()
         {
-            // TODO Keep old path to retain all solutions
-
             var graph = WordGraph.French;
             var board = new Board();
-            board = board.Play("LETTRE", new Cell(4, 2), Direction.Right);
+            var score = new Score();
+            var part = new WordPart("LETTRE", new Cell(4, 2), Direction.Right);
+            board = board.Play(part);
+            score = score.Play(part);
             var rack = new Rack(new ConstantSet<char>("MOTEUR"));
             var play = new PlayGraph(graph, board, rack);
             for (int i = 0; i < 5; i++)
@@ -191,12 +207,13 @@ namespace Ded.Wordox
         public void TestGetBeforePart(int row, int column, string word, Direction direction)
         {
             var board = new Board();
-            board = board.Play("MER", new Cell(4, 4), Direction.Right);
-            WordPart part = board.GetBeforePart(new Cell(row, column), direction);
+            var part = new WordPart("MER", new Cell(4, 4), Direction.Right);
+            board = board.Play(part);
+            WordPart before = board.GetBeforePart(new Cell(row, column), direction);
             if (word != null)
-                Assert.AreEqual(new WordPart(word, new Cell(4, 4), direction), part);
+                Assert.AreEqual(new WordPart(word, new Cell(4, 4), direction), before);
             else
-                Assert.IsNull(part);
+                Assert.IsNull(before);
         }
         [CLSCompliant(false)]
         [TestCase(4, 3, "MER", Direction.Right)]
@@ -206,12 +223,13 @@ namespace Ded.Wordox
         public void TestGetAfterPart(int row, int column, string word, Direction direction)
         {
             var board = new Board();
-            board = board.Play("MER", new Cell(4, 4), Direction.Right);
-            WordPart part = board.GetAfterPart(new Cell(row, column), direction);
+            var part = new WordPart("MER", new Cell(4, 4), Direction.Right);
+            board = board.Play(part);
+            WordPart after = board.GetAfterPart(new Cell(row, column), direction);
             if (word != null)
-                Assert.AreEqual(new WordPart(word, new Cell(4, 4), direction), part);
+                Assert.AreEqual(new WordPart(word, new Cell(4, 4), direction), after);
             else
-                Assert.IsNull(part);
+                Assert.IsNull(after);
         }
     }
     class AI

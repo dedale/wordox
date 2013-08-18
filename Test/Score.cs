@@ -42,7 +42,7 @@ namespace Ded.Wordox
             var part1 = new WordPart("LETTRE", new Cell(4, 3), Direction.Right);
             var first = score.Play(part1);
             var part2 = new WordPart("LE", new Cell(4, 3), Direction.Bottom);
-            var play = new PlayPath(part2, new LetterPlay(new Cell(5, 3), 'E'), new ConstantSet<char>("MOTUR"));
+            var play = new PlayPath(part2, new LetterPlay(new Cell(5, 3), 'E'), new ConstantSet<char>("MOTUR"), true);
             var second = first.Play(play);
             Assert.AreEqual(new PlayerScore(5, 1), second.Current);
             Assert.AreEqual(new PlayerScore(2, 0), second.Other);
@@ -63,7 +63,7 @@ namespace Ded.Wordox
                     cell = cell.Bottom;
             }
             var extra = part1.Play(new Cell(4, 8), 'E');
-            var play = new PlayPath(part2, new WordPartCollection(extra), played.ToConstant(), new ConstantSet<char>());
+            var play = new PlayPath(part2, new WordPartCollection(extra), played.ToConstant(), new ConstantSet<char>(), true, null);
             var second = first.Play(play);
             Assert.AreEqual(new PlayerScore(0, 0), second.Current);
             Assert.AreEqual(new PlayerScore(12, 1), second.Other);

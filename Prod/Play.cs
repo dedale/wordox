@@ -27,26 +27,32 @@ namespace Ded.Wordox
         private readonly WordPartCollection extras;
         private readonly ConstantList<LetterPlay> played;
         private readonly ConstantSet<char> pending;
+        private readonly bool valid;
+        private readonly PlayPath previous;
         #endregion
-        public PlayPath(WordPart main, LetterPlay letter, ConstantSet<char> pending)
-            : this(main, WordPartCollection.Empty, new ConstantList<LetterPlay>(letter), pending)
+        public PlayPath(WordPart main, LetterPlay letter, ConstantSet<char> pending, bool valid)
+            : this(main, WordPartCollection.Empty, new ConstantList<LetterPlay>(letter), pending, valid, null)
         {
         }
-        public PlayPath(WordPart main, WordPart extra, LetterPlay letter, ConstantSet<char> pending)
-            : this(main, new WordPartCollection(extra), new ConstantList<LetterPlay>(letter), pending)
+        public PlayPath(WordPart main, WordPart extra, LetterPlay letter, ConstantSet<char> pending, bool valid)
+            : this(main, new WordPartCollection(extra), new ConstantList<LetterPlay>(letter), pending, valid, null)
         {
         }
-        public PlayPath(WordPart main, WordPartCollection extras, ConstantList<LetterPlay> played, ConstantSet<char> pending)
+        public PlayPath(WordPart main, WordPartCollection extras, ConstantList<LetterPlay> played, ConstantSet<char> pending, bool valid, PlayPath previous)
         {
             this.main = main;
             this.extras = extras;
             this.played = played;
             this.pending = pending;
+            this.valid = valid;
+            this.previous = previous;
         }
         public WordPart Main { get { return main; } }
         public WordPartCollection Extras { get { return extras; } }
         public ConstantList<LetterPlay> Played { get { return played; } }
         public ConstantSet<char> Pending { get { return pending; } }
+        public bool IsValid { get { return valid; } }
+        public PlayPath Previous { get { return previous; } }
     }
     class WordPartPair
     {
@@ -77,15 +83,23 @@ namespace Ded.Wordox
     }
     class PlayGraph
     {
-        #region class Init
-        private sealed class Init
+        #region class CtorHelper
+        private sealed class CtorHelper
         {
             #region Fields
             private readonly WordGraph graph;
             private readonly Board board;
             private readonly Dictionary<WordPart, PlayPath> paths;
             #endregion
-            public Init(WordGraph graph, Board board, Rack rack)
+            #region Private stuff
+            private PlayPath GetPath(WordPart mainPart, WordPart extraPart, LetterPlay played, ConstantSet<char> pending, bool valid)
+            {
+                if (extraPart == null)
+                    return new PlayPath(mainPart, played, pending.ToConstant(), valid);
+                return new PlayPath(mainPart, extraPart, played, pending.ToConstant(), valid);
+            }
+            #endregion
+            public CtorHelper(WordGraph graph, Board board, Rack rack)
             {
                 this.graph = graph;
                 this.board = board;
@@ -103,16 +117,16 @@ namespace Ded.Wordox
                             continue;
                         foreach (char letter in choices)
                         {
+                            WordPart mainPart = mainPair.Play(cell, letter) ?? new WordPart(letter.ToString(), cell, direction);
                             WordPart extraPart = extraPair.Play(cell, letter);
                             if (extraPart != null && !graph.IsValid(extraPart.Word))
                                 continue;
-                            WordPart mainPart = mainPair.Play(cell, letter) ?? new WordPart(letter.ToString(), cell, direction);
+                            var played = new LetterPlay(cell, letter);
                             var pending = new HashSet<char>(rack.Letters);
                             pending.Remove(letter);
-                            bool isValid = mainPart.Word.Length == 1 || graph.IsValid(mainPart.Word);
-                            var played = new LetterPlay(cell, letter);
-                            var path = extraPart == null ? new PlayPath(mainPart, played, pending.ToConstant()) : new PlayPath(mainPart, extraPart, played, pending.ToConstant());
-                            if (isValid)
+                            bool valid = mainPart.Word.Length == 1 || graph.IsValid(mainPart.Word);
+                            var path = GetPath(mainPart, extraPart, played, pending.ToConstant(), valid);
+                            if (valid)
                                 Debug(path);
                             paths.Add(mainPart, path);
                         }
@@ -136,7 +150,7 @@ namespace Ded.Wordox
             this.board = board;
             this.paths = paths;
         }
-        private PlayGraph(Init init)
+        private PlayGraph(CtorHelper init)
             : this(init.Graph, init.Board, init.Paths)
         {
         }
@@ -157,14 +171,14 @@ namespace Ded.Wordox
             if (path.Extras.Count > 0)
                 foreach (WordPart extra in path.Extras)
                     sb.AppendFormat(" [{0} {1} {2}]", extra.First, extra.Direction, extra.Word);
-            sb.AppendFormat(" {0}", string.Join(string.Empty, (from lp in path.Played select lp.Letter).ToArray()));
+            sb.AppendFormat(" +{0}", string.Join(string.Empty, (from lp in path.Played select lp.Letter).ToArray()));
             if (path.Pending.Count > 0)
-                sb.AppendFormat(" {0}", new string(path.Pending.ToArray()));
+                sb.AppendFormat(" [{0}]", new string(path.Pending.ToArray()));
             Console.WriteLine(sb);
         }
         #endregion
         public PlayGraph(WordGraph graph, Board board, Rack rack)
-            : this(new Init(graph, board, rack))
+            : this(new CtorHelper(graph, board, rack))
         {
         }
         public IEnumerable<PlayPath> Paths
@@ -211,11 +225,11 @@ namespace Ded.Wordox
                         continue;
                     foreach (char letter in choices)
                     {
-                        WordPart extraPart = extraPair.Play(cell, letter);
-                        if (extraPart != null && !graph.IsValid(extraPart.Word))
-                            continue;
                         WordPart mainPart = mainPair.Play(cell, letter);
                         if (newPaths.ContainsKey(mainPart))
+                            continue;
+                        WordPart extraPart = extraPair.Play(cell, letter);
+                        if (extraPart != null && !graph.IsValid(extraPart.Word))
                             continue;
                         var pending = new HashSet<char>(path.Pending);
                         pending.Remove(letter);
@@ -230,9 +244,9 @@ namespace Ded.Wordox
                             played.Insert(0, letterPlay);
                         else
                             played.Add(letterPlay);
-                        bool isValid = mainPart.Word.Length == 1 || graph.IsValid(mainPart.Word);
-                        var newPath = new PlayPath(mainPart, new WordPartCollection(extras.ToConstant()), played.ToConstant(), pending.ToConstant());
-                        if (isValid)
+                        bool valid = mainPart.Word.Length == 1 || graph.IsValid(mainPart.Word);
+                        var newPath = new PlayPath(mainPart, new WordPartCollection(extras.ToConstant()), played.ToConstant(), pending.ToConstant(), valid, path);
+                        if (valid)
                             Debug(newPath);
                         newPaths.Add(mainPart, newPath);
                     }
