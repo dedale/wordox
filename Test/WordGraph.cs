@@ -91,6 +91,15 @@ namespace Ded.Wordox
                         yield return edge;
             }
         }
+        public ConstantSet<char> GetLetters(Fix fix)
+        {
+            if (fix != Fix.Prefix && fix != Fix.Suffix)
+                throw new ArgumentException(string.Format("Bad fix : {0}", fix), "fix");
+            Dictionary<char, FixEdge> map;
+            if (!edges.TryGetValue(fix, out map))
+                return new ConstantSet<char>();
+            return new ConstantSet<char>(map.Keys);
+        }
     }
     class ValidWord
     {
@@ -252,6 +261,24 @@ namespace Ded.Wordox
                 return vertex.Fixes;
             return Fix.None;
         }
+        public ConstantSet<char> GetLetters(string part, Fix fix)
+        {
+            WordVertex vertex;
+            if (!vertices.TryGetValue(part, out vertex))
+                throw new ArgumentException(string.Format("Unknown word part : {0}", part), "part");
+            //if (fix != Fix.Prefix && fix != Fix.Suffix)
+            //    throw new ArgumentException(string.Format("Bad fix : {0}", fix), "fix");
+            return vertex.GetLetters(fix);
+        }
+        public bool IsValid(string word)
+        {
+            if (string.IsNullOrEmpty(word) || word.Length == 1)
+                throw new ArgumentException(string.Format("{0} is too short", word), "word");
+            WordVertex vertex;
+            if (vertices.TryGetValue(word, out vertex))
+                return vertex.IsValid;
+            return false;
+        }
         public static WordGraph French
         {
             get { return french.Value; }
@@ -365,6 +392,20 @@ namespace Ded.Wordox
         public void TestSelect(Fix fixes, Fix allowed, bool selected)
         {
             Assert.AreEqual(selected, WordGraph.Select(fixes, allowed));
+        }
+        [Test] public void TestGetLetters()
+        {
+            var graph = WordGraph.French;
+            var letters = graph.GetLetters("KIW", Fix.Suffix);
+            Assert.AreEqual(1, letters.Count);
+            Assert.AreEqual('I', letters.ToList()[0]);
+        }
+        [TestCase("LETTREE", true)]
+        [TestCase("ELETTRE", false)]
+        public void TestIsValid(string word, bool valid)
+        {
+            var graph = WordGraph.French;
+            Assert.AreEqual(valid, graph.IsValid(word));
         }
     }
     [TestFixture]

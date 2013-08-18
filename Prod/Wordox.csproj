@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Board.cs" />
     <Compile Include="BoardUserControl.cs">
       <SubType>UserControl</SubType>
     </Compile>

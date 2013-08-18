@@ -12,6 +12,7 @@ namespace Ded.Wordox
 {
     public partial class CellUserControl : UserControl
     {
+        #region Handlers
         private void CellUserControl_Load(object sender, EventArgs e)
         {
             richTextBox.Width = richTextBox.Height;
@@ -34,6 +35,7 @@ namespace Ded.Wordox
         {
             // Follow direction
         }
+        #endregion
         public CellUserControl()
         {
             InitializeComponent();

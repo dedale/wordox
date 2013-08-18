@@ -29,12 +29,15 @@ namespace Ded.Wordox
                 return sr.ReadToEnd();
         }
     }
-
     class ConstantList<T> : IList<T>
     {
         #region Fields
         private readonly ReadOnlyCollection<T> wrapped;
         #endregion
+        public ConstantList()
+            : this(new List<T>())
+        {
+        }
         public ConstantList(IList<T> seq)
         {
             wrapped = new ReadOnlyCollection<T>(seq);
@@ -187,6 +190,85 @@ namespace Ded.Wordox
             return GetEnumerator();
         }
     }
+    class ConstantDictionary<K, V> : IDictionary<K, V>
+    {
+        #region Fields
+        private readonly ReadOnlyDictionary<K, V> wrapped;
+        #endregion
+        public ConstantDictionary()
+            : this(new Dictionary<K, V>())
+        {
+        }
+        public ConstantDictionary(IDictionary<K, V> map)
+        {
+            wrapped = new ReadOnlyDictionary<K, V>(map);
+        }
+        public void Add(K key, V value)
+        {
+            throw new NotSupportedException();
+        }
+        public bool ContainsKey(K key)
+        {
+            return wrapped.ContainsKey(key);
+        }
+        public ICollection<K> Keys
+        {
+            get { return wrapped.Keys; }
+        }
+        public bool Remove(K key)
+        {
+            throw new NotSupportedException();
+        }
+        public bool TryGetValue(K key, out V value)
+        {
+            return wrapped.TryGetValue(key, out value);
+        }
+        public ICollection<V> Values
+        {
+            get { return wrapped.Values; }
+        }
+        public V this[K key]
+        {
+            get { return wrapped[key]; }
+            set { throw new NotSupportedException(); }
+        }
+        public void Add(KeyValuePair<K, V> item)
+        {
+            throw new NotSupportedException();
+        }
+        public void Clear()
+        {
+            throw new NotSupportedException();
+        }
+        public bool Contains(KeyValuePair<K, V> item)
+        {
+            throw new NotImplementedException();
+        }
+        public void CopyTo(KeyValuePair<K, V>[] array, int arrayIndex)
+        {
+            throw new NotImplementedException();
+        }
+        public int Count
+        {
+            get { return wrapped.Count; }
+        }
+        public bool IsReadOnly
+        {
+            get { return true; }
+        }
+        public bool Remove(KeyValuePair<K, V> item)
+        {
+            throw new NotSupportedException();
+        }
+        public IEnumerator<KeyValuePair<K, V>> GetEnumerator()
+        {
+            return wrapped.GetEnumerator();
+        }
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
     static class ISetExtensions
     {
         public static void AddRange<T>(this ISet<T> set, IEnumerable<T> items)
@@ -199,6 +281,24 @@ namespace Ded.Wordox
             if (set is ConstantSet<T>)
                 return (ConstantSet<T>)set;
             return new ConstantSet<T>(set);
+        }
+    }
+    static class IListExtensions
+    {
+        public static ConstantList<T> ToConstant<T>(this IList<T> list)
+        {
+            if (list is ConstantList<T>)
+                return (ConstantList<T>)list;
+            return new ConstantList<T>(list);
+        }
+    }
+    static class StringExtensions
+    {
+        public static string Sort(this string s)
+        {
+            var letters = new List<char>(s);
+            letters.Sort();
+            return new string(letters.ToArray());
         }
     }
 }

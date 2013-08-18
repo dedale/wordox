@@ -7,71 +7,6 @@ using System.Threading.Tasks;
 
 namespace Ded.Wordox
 {
-    class Cell
-    {
-        #region Fields
-        private readonly int row;
-        private readonly int column;
-        #endregion
-        #region Private stuff
-        private Cell GetNext(Direction direction)
-        {
-            switch (direction)
-            {
-                case Direction.Bottom:
-                    if (row == Board.Height - 1)
-                        return null;
-                    return new Cell(row + 1, column);
-                case Direction.Right:
-                    if (column == Board.Width - 1)
-                        return null;
-                    return new Cell(row, column + 1);
-                default:
-                    throw new ArgumentException(string.Format("Unknown direction : {0}", direction), "direction");
-            }
-        }
-        #endregion
-        public Cell(int row, int column)
-        {
-            if (row < 0
-                || column < 0
-                || row >= Board.Height
-                || column >= Board.Width)
-                throw new IndexOutOfRangeException(string.Format("Cannot create cell in {0},{1}", row, column));
-            this.row = row;
-            this.column = column;
-        }
-        public int Row { get { return row; } }
-        public int Column { get { return column; } }
-        public override string ToString()
-        {
-            return string.Format("{0},{1}", row, column);
-        }
-        public override int GetHashCode()
-        {
-            // 463 is 90th prime (90 > 9 x 9)
-            return row ^ (column * 463);
-        }
-        public override bool Equals(object obj)
-        {
-            if (ReferenceEquals(this, obj))
-                return true;
-            var other = obj as Cell;
-            if (other == null)
-                return false;
-            return row == other.row && column == other.column;
-        }
-        public bool TryGetNext(Direction direction, out Cell next)
-        {
-            next = GetNext(direction);
-            if (next != null)
-            {
-                if (next.row >= Board.Height || next.column >= Board.Width)
-                    next = null;
-            }
-            return next != null;
-        }
-    }
     [TestFixture]
     public class CellTest
     {
@@ -110,6 +45,15 @@ namespace Ded.Wordox
                 }
             }
         }
+        [Test] public void TestOperators()
+        {
+            Assert.IsFalse(new Cell(0, 0) == null);
+            Assert.IsTrue(new Cell(0, 0) != null);
+            Assert.IsTrue(new Cell(0, 0) == new Cell(0, 0));
+            Assert.IsFalse(new Cell(0, 0) != new Cell(0, 0));
+            Assert.IsFalse(new Cell(1, 0) == new Cell(0, 0));
+            Assert.IsTrue(new Cell(1, 0) != new Cell(0, 0));
+        }
         [Test] public void TestTryGetNext()
         {
             for (int row = 0; row < Board.Height; row++)
@@ -128,50 +72,18 @@ namespace Ded.Wordox
             }
         }
     }
-    class Board
+
+    class PlayPath
     {
-        #region Constants
-        public const int Height = 9;
-        public const int Width = Height;
-        internal const int Center = Height / 2;
-        #endregion
         #region Fields
-        private readonly char[,] board = new char[Height, Width];
+
         #endregion
-        public Board()
-        {
-        }
-        public IEnumerable<Cell> GetStartCells()
-        {
-            return new[] { new Cell(Center, Center) };
-        }
-        private bool Contains(ConstantSet<Cell> start, ISet<Cell> played)
-        {
-            foreach (Cell cell in played)
-                if (start.Contains(cell))
-                    return true;
-            return false;
-        }
-        public void Play(string word, Cell cell, Direction direction)
-        {
-            var start = new ConstantSet<Cell>(GetStartCells());
-            var cells = new HashSet<Cell>();
-            cells.Add(cell);
-            var current = cell;
-            for (int i = 1; i < word.Length; i++)
-            {
-                if (!current.TryGetNext(direction, out current))
-                    throw new ArgumentException(string.Format("Cannot play {0} at {1}", word, cell));
-                cells.Add(current);
-            }
-            if (!Contains(start, cells))
-                throw new ArgumentException(string.Format("Cannot play {0} at {1}", word, cell));
-        }
     }
+
     [TestFixture]
     public class BoardTest
     {
-        [Test] public void TestGetStartCells()
+        [Test] public void TestGetStartCellsFirst()
         {
             var board = new Board();
             var start = board.GetStartCells().ToList();
@@ -209,15 +121,124 @@ namespace Ded.Wordox
             else
                 action();
         }
-    }
-    static class StringExtensions
-    {
-        public static string Sort(this string s)
+        [CLSCompliant(false)]
+        [TestCase("ME", 4, 4, Direction.Right, 6)]
+        [TestCase("LETTRE", 2, 4, Direction.Bottom, 14)]
+        [TestCase("LETTRE", 3, 4, Direction.Bottom, 13)]
+        [TestCase("LETTRE", 4, 2, Direction.Right, 14)]
+        [TestCase("LETTRE", 4, 3, Direction.Right, 13)]
+        public void TestGetStartCellsSecond(string word, int row, int column, Direction direction, int count)
         {
-            var letters = new List<char>(s);
-            letters.Sort();
-            return new string(letters.ToArray());
+            var board = new Board();
+            board.Play(word, new Cell(row, column), direction);
+            var cells = board.GetStartCells();
+            Assert.AreEqual(count, cells.Count);
         }
+        [Test] public void TestPlaySecond()
+        {
+            var graph = WordGraph.French;
+            var board = new Board();
+            board.Play("LETTRE", new Cell(4, 2), Direction.Right);
+            var rack = new HashSet<char>("MOTEUR");
+            var cells = board.GetStartCells();
+            foreach (Cell cell in cells)
+            {
+                foreach (Direction direction in new[] { Direction.Bottom, Direction.Right })
+                {
+                    var otherDirection = direction == Direction.Bottom ? Direction.Right : Direction.Bottom;
+                    WordPart extraBefore = board.GetBeforePart(cell, otherDirection);
+                    WordPart extraAfter = board.GetAfterPart(cell, otherDirection);
+                    var choices = new HashSet<char>(rack);
+                    if (extraBefore != null)
+                        choices.IntersectWith(graph.GetLetters(extraBefore.Word, Fix.Suffix));
+                    if (extraAfter != null)
+                        choices.IntersectWith(graph.GetLetters(extraAfter.Word, Fix.Prefix));
+
+                    WordPart mainBefore = board.GetBeforePart(cell, direction);
+                    WordPart mainAfter = board.GetAfterPart(cell, direction);
+                    if (mainBefore != null)
+                        choices.IntersectWith(graph.GetLetters(mainBefore.Word, Fix.Suffix));
+                    if (mainAfter != null)
+                        choices.IntersectWith(graph.GetLetters(mainAfter.Word, Fix.Prefix));
+
+                    if (choices.Count == 0)
+                        continue;
+                    foreach (char letter in choices)
+                    {
+                        WordPart extraPart = null;
+                        var extraBeforePlayed = extraBefore == null ? (WordPart)null : extraBefore.Play(cell, letter);
+                        var extraAfterPlayed = extraAfter == null ? (WordPart)null : extraAfter.Play(cell, letter);
+                        if (extraBeforePlayed != null && extraAfterPlayed != null)
+                            extraPart = extraBeforePlayed.Merge(extraAfterPlayed);
+                        else if (extraBeforePlayed != null)
+                            extraPart = extraBeforePlayed;
+                        else if (extraAfterPlayed != null)
+                            extraPart = extraAfterPlayed;
+                        if (extraPart != null)
+                        {
+                            if (extraPart.Word.Length > 1 && !graph.IsValid(extraPart.Word))
+                                continue;
+                            // cell
+                            // direction
+                            // (otherDirection)
+                            // mainPart
+                            // extraParts
+                            Console.WriteLine("{0} {1} {2} {3} {4} {5} {6}-{7} {8}", cell, otherDirection, letter, extraPart.First, extraPart.Direction, extraPart.Word, extraPart.First, extraPart.Last, direction);
+                        }
+
+                        WordPart mainPart = null;
+                        var mainBeforePlayed = mainBefore == null ? (WordPart)null : mainBefore.Play(cell, letter);
+                        var mainAfterPlayed = mainAfter == null ? (WordPart)null : mainAfter.Play(cell, letter);
+                        if (mainBeforePlayed != null && mainAfterPlayed != null)
+                            mainPart = mainBeforePlayed.Merge(mainAfterPlayed);
+                        else if (mainBeforePlayed != null)
+                            mainPart = mainBeforePlayed;
+                        else if (mainAfterPlayed != null)
+                            mainPart = mainAfterPlayed;
+                        if (mainPart == null)
+                            mainPart = new WordPart(letter.ToString(), cell, direction);
+                        Console.WriteLine("{0} {1} {2} {3} {4} {5} {6}-{7} {8}", cell, otherDirection, letter, mainPart.First, mainPart.Direction, mainPart.Word, mainPart.First, mainPart.Last, direction);
+                        Console.WriteLine();
+                    }
+                }
+            }
+        }
+        [CLSCompliant(false)]
+        [TestCase(4, 3, null, Direction.Right)]
+        [TestCase(4, 7, "MER", Direction.Right)]
+        [TestCase(3, 4, null, Direction.Bottom)]
+        [TestCase(5, 4, "M", Direction.Bottom)]
+        public void TestGetBeforePart(int row, int column, string word, Direction direction)
+        {
+            var board = new Board();
+            board.Play("MER", new Cell(4, 4), Direction.Right);
+            WordPart part = board.GetBeforePart(new Cell(row, column), direction);
+            if (word != null)
+                Assert.AreEqual(new WordPart(word, new Cell(4, 4), direction), part);
+            else
+                Assert.IsNull(part);
+        }
+        [CLSCompliant(false)]
+        [TestCase(4, 3, "MER", Direction.Right)]
+        [TestCase(4, 7, null, Direction.Right)]
+        [TestCase(3, 4, "M", Direction.Bottom)]
+        [TestCase(5, 4, null, Direction.Bottom)]
+        public void TestGetAfterPart(int row, int column, string word, Direction direction)
+        {
+            var board = new Board();
+            board.Play("MER", new Cell(4, 4), Direction.Right);
+            WordPart part = board.GetAfterPart(new Cell(row, column), direction);
+            if (word != null)
+                Assert.AreEqual(new WordPart(word, new Cell(4, 4), direction), part);
+            else
+                Assert.IsNull(part);
+        }
+        //public void TestGetWordPartOtherDirection()
+        //{
+        //    var board = new Board();
+        //    board.Play("MER", new Cell(4, 4), Direction.Right);
+        //    WordPart part = board.GetWordPart(new Cell(5, 4), Direction.Bottom, 'E');
+        //}
     }
     class AI
     {
@@ -278,6 +299,65 @@ namespace Ded.Wordox
             Assert.AreEqual(2, words.Count, "FindLongest failed for " + letters);
             Assert.IsTrue(words.ContainsKey("NEZ"), "NEZ not found for " + letters);
             Assert.IsTrue(words.ContainsKey("ZEN"), "ZEN not found for " + letters);
+        }
+    }
+    [TestFixture]
+    public class WordPartTest
+    {
+        [CLSCompliant(false)]
+        [TestCase("MER", Direction.Right, 4, 3, 'A', "AMER", 4, 3)]
+        [TestCase("MER", Direction.Right, 4, 7, 'E', "MERE", 4, 4)]
+        [TestCase("MER", Direction.Bottom, 3, 4, 'A', "AMER", 3, 4)]
+        [TestCase("MER", Direction.Bottom, 7, 4, 'E', "MERE", 4, 4)]
+        public void TestPlay(string word, Direction direction, int row, int column, char letter, string newWord, int newRow, int newColumn)
+        {
+            var part = new WordPart(word, new Cell(4, 4), direction);
+            var played = part.Play(new Cell(row, column), letter);
+            Assert.AreEqual(newWord, played.Word);
+            Assert.AreEqual(new Cell(newRow, newColumn), played.First);
+            Assert.AreEqual(direction, played.Direction);
+        }
+        [Test] public void TestPlayUnrelated()
+        {
+            var part = new WordPart("MER", new Cell(4, 4), Direction.Right);
+            var played = part.Play(new Cell(0, 0), 'E');
+            Assert.AreEqual(part, played);
+        }
+        [Test] public void TestMerge()
+        {
+            var part = new WordPart("MER", new Cell(4, 4), Direction.Right);
+            Assert.Throws<ArgumentException>(() => part.Merge(new WordPart("RE", new Cell(0, 0), Direction.Right)));
+            Assert.Throws<ArgumentException>(() => part.Merge(new WordPart("RE", new Cell(4, 6), Direction.Bottom)));
+            Assert.Throws<ArgumentException>(() => part.Merge(new WordPart("ER", new Cell(4, 6), Direction.Right)));
+            var merge = part.Merge(new WordPart("RE", new Cell(4, 6), Direction.Right));
+            Assert.AreEqual(part.First, merge.First);
+            Assert.AreEqual("MERE", merge.Word);
+            Assert.AreEqual(Direction.Right, merge.Direction);
+        }
+    }
+    [TestFixture]
+    public class WordPartCollectionTest
+    {
+        [Test] public void TestPlaySimple()
+        {
+            var list = new List<WordPart>();
+            list.Add(new WordPart("MOT", new Cell(4, 4), Direction.Right));
+            var parts = new WordPartCollection(list.ToConstant());
+            var newParts = parts.Play(new Cell(4, 7), 'S');
+            Assert.AreEqual(1, newParts.Count);
+            Assert.AreEqual("MOTS", newParts[0].Word);
+            Assert.AreEqual(new Cell(4, 4), newParts[0].First);
+            Assert.AreEqual(Direction.Right, newParts[0].Direction);
+        }
+        [Test] public void TestPlayBetween()
+        {
+            var list = new List<WordPart>();
+            list.Add(new WordPart("LET", new Cell(4, 0), Direction.Right));
+            list.Add(new WordPart("RE", new Cell(4, 4), Direction.Right));
+            var parts = new WordPartCollection(list.ToConstant());
+            var played = parts.Play(new Cell(4, 3), 'T');
+            Assert.AreEqual(1, played.Count);
+            Assert.AreEqual(new WordPart("LETTRE", new Cell(4, 0), Direction.Right), played[0]);
         }
     }
 }
