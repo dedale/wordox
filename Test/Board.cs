@@ -117,35 +117,6 @@ namespace Ded.Wordox
         }
     }
 
-    class PlayPath
-    {
-        #region Fields
-        private readonly WordPart main;
-        private readonly WordPartCollection extras;
-        private readonly string played;
-        private readonly ConstantSet<char> pending;
-        #endregion
-        public PlayPath(WordPart main, char played, ConstantSet<char> pending)
-            : this(main, WordPartCollection.Empty, played.ToString(), pending)
-        {
-        }
-        public PlayPath(WordPart main, WordPart extra, char played, ConstantSet<char> pending)
-            : this(main, new WordPartCollection(extra), played.ToString(), pending)
-        {
-        }
-        public PlayPath(WordPart main, WordPartCollection extras, string played, ConstantSet<char> pending)
-        {
-            this.main = main;
-            this.extras = extras;
-            this.played = played;
-            this.pending = pending;
-        }
-        public WordPart Main { get { return main; } }
-        public WordPartCollection Extras { get { return extras; } }
-        public string Played { get { return played; } }
-        public ConstantSet<char> Pending { get { return pending; } }
-    }
-
     [TestFixture]
     public class BoardTest
     {
@@ -200,189 +171,17 @@ namespace Ded.Wordox
             var cells = board.GetStartCells();
             Assert.AreEqual(count, cells.Count);
         }
-        private static void Debug(PlayPath path)
-        {
-            var sb = new StringBuilder();
-            sb.AppendFormat("{0} {1} {2}", path.Main.First, path.Main.Direction, path.Main.Word);
-            if (path.Extras.Count > 0)
-                foreach (WordPart extra in path.Extras)
-                    sb.AppendFormat(" [{0} {1} {2}]", extra.First, extra.Direction, extra.Word);
-            sb.AppendFormat(" {0}", path.Played);
-            if (path.Pending.Count > 0)
-                sb.AppendFormat(" {0}", new string(path.Pending.ToArray()));
-            Console.WriteLine(sb);
-        }
-        [Test] public void TestPlaySecond()
+        [Test] public void TestPlayAll()
         {
             // TODO Keep old path to retain all solutions
 
             var graph = WordGraph.French;
             var board = new Board();
             board.Play("LETTRE", new Cell(4, 2), Direction.Right);
-            var rack = new HashSet<char>("MOTEUR");
-
-            var paths = new Dictionary<WordPart, PlayPath>();
-
-            var cells = board.GetStartCells();
-            foreach (Cell cell in cells)
-            {
-                foreach (Direction direction in new[] { Direction.Bottom, Direction.Right })
-                {
-                    var otherDirection = direction == Direction.Bottom ? Direction.Right : Direction.Bottom;
-                    
-                    WordPart extraBefore = board.GetBeforePart(cell, otherDirection);
-                    WordPart extraAfter = board.GetAfterPart(cell, otherDirection);
-                    var choices = new HashSet<char>(rack);
-                    if (extraBefore != null)
-                        choices.IntersectWith(graph.GetLetters(extraBefore.Word, Fix.Suffix));
-                    if (extraAfter != null)
-                        choices.IntersectWith(graph.GetLetters(extraAfter.Word, Fix.Prefix));
-
-                    WordPart mainBefore = board.GetBeforePart(cell, direction);
-                    WordPart mainAfter = board.GetAfterPart(cell, direction);
-                    if (mainBefore != null)
-                        choices.IntersectWith(graph.GetLetters(mainBefore.Word, Fix.Suffix));
-                    if (mainAfter != null)
-                        choices.IntersectWith(graph.GetLetters(mainAfter.Word, Fix.Prefix));
-
-                    if (choices.Count == 0)
-                        continue;
-                    foreach (char letter in choices)
-                    {
-                        WordPart extraPart = null;
-                        var extraBeforePlayed = extraBefore == null ? (WordPart)null : extraBefore.Play(cell, letter);
-                        var extraAfterPlayed = extraAfter == null ? (WordPart)null : extraAfter.Play(cell, letter);
-                        if (extraBeforePlayed != null && extraAfterPlayed != null)
-                            extraPart = extraBeforePlayed.Merge(extraAfterPlayed);
-                        else if (extraBeforePlayed != null)
-                            extraPart = extraBeforePlayed;
-                        else if (extraAfterPlayed != null)
-                            extraPart = extraAfterPlayed;
-                        if (extraPart != null && !graph.IsValid(extraPart.Word))
-                            continue;
-
-                        WordPart mainPart = null;
-                        var mainBeforePlayed = mainBefore == null ? (WordPart)null : mainBefore.Play(cell, letter);
-                        var mainAfterPlayed = mainAfter == null ? (WordPart)null : mainAfter.Play(cell, letter);
-                        if (mainBeforePlayed != null && mainAfterPlayed != null)
-                            mainPart = mainBeforePlayed.Merge(mainAfterPlayed);
-                        else if (mainBeforePlayed != null)
-                            mainPart = mainBeforePlayed;
-                        else if (mainAfterPlayed != null)
-                            mainPart = mainAfterPlayed;
-                        if (mainPart == null)
-                            mainPart = new WordPart(letter.ToString(), cell, direction);
-
-                        var pending = new HashSet<char>(rack);
-                        pending.Remove(letter);
-                        var path = extraPart == null ? new PlayPath(mainPart, letter, pending.ToConstant()) : new PlayPath(mainPart, extraPart, letter, pending.ToConstant());
-
-                        if (path.Main.Word.Length > 1 && graph.IsValid(path.Main.Word))
-                            Debug(path);
-
-                        paths.Add(mainPart, path);
-                    }
-                }
-            }
-
+            var rack = new Rack(new ConstantSet<char>("MOTEUR"));
+            var play = new PlayGraph(graph, board, rack);
             for (int i = 0; i < 5; i++)
-            {
-                var paths2 = new Dictionary<WordPart, PlayPath>();
-                foreach (PlayPath path in paths.Values)
-                {
-                    Direction direction = path.Main.Direction;
-                    var start = new List<Tuple<Cell, Fix>>();
-                    switch (direction)
-                    {
-                        case Direction.Right:
-                            if (path.Main.First.HasLeft)
-                                start.Add(new Tuple<Cell, Fix>(path.Main.First.Left, Fix.Prefix));
-                            if (path.Main.Last.HasRight)
-                                start.Add(new Tuple<Cell, Fix>(path.Main.Last.Right, Fix.Suffix));
-                            break;
-                        case Direction.Bottom:
-                            if (path.Main.First.HasTop)
-                                start.Add(new Tuple<Cell, Fix>(path.Main.First.Top, Fix.Prefix));
-                            if (path.Main.Last.HasBottom)
-                                start.Add(new Tuple<Cell, Fix>(path.Main.Last.Bottom, Fix.Suffix));
-                            break;
-                    }
-                    foreach (Tuple<Cell, Fix> cellFix in start)
-                    {
-                        Cell cell = cellFix.Item1;
-                        Fix fix = cellFix.Item2;
-                        var otherDirection = direction == Direction.Bottom ? Direction.Right : Direction.Bottom;
-
-                        WordPart extraBefore = board.GetBeforePart(cell, otherDirection);
-                        WordPart extraAfter = board.GetAfterPart(cell, otherDirection);
-                        var choices = new HashSet<char>(path.Pending);
-                        if (extraBefore != null)
-                            choices.IntersectWith(graph.GetLetters(extraBefore.Word, Fix.Suffix));
-                        if (extraAfter != null)
-                            choices.IntersectWith(graph.GetLetters(extraAfter.Word, Fix.Prefix));
-
-                        WordPart mainBefore = fix == Fix.Suffix ? path.Main : board.GetBeforePart(cell, direction);
-                        WordPart mainAfter = fix == Fix.Prefix ? path.Main : board.GetAfterPart(cell, direction);
-                        if (mainBefore != null)
-                            choices.IntersectWith(graph.GetLetters(mainBefore.Word, Fix.Suffix));
-                        if (mainAfter != null)
-                            choices.IntersectWith(graph.GetLetters(mainAfter.Word, Fix.Prefix));
-
-                        if (choices.Count == 0)
-                            continue;
-
-                        foreach (char letter in choices)
-                        {
-                            WordPart extraPart = null;
-                            var extraBeforePlayed = extraBefore == null ? (WordPart)null : extraBefore.Play(cell, letter);
-                            var extraAfterPlayed = extraAfter == null ? (WordPart)null : extraAfter.Play(cell, letter);
-                            if (extraBeforePlayed != null && extraAfterPlayed != null)
-                                extraPart = extraBeforePlayed.Merge(extraAfterPlayed);
-                            else if (extraBeforePlayed != null)
-                                extraPart = extraBeforePlayed;
-                            else if (extraAfterPlayed != null)
-                                extraPart = extraAfterPlayed;
-                            if (extraPart != null && !graph.IsValid(extraPart.Word))
-                                continue;
-
-                            WordPart mainPart = null;
-                            var mainBeforePlayed = mainBefore == null ? (WordPart)null : mainBefore.Play(cell, letter);
-                            var mainAfterPlayed = mainAfter == null ? (WordPart)null : mainAfter.Play(cell, letter);
-                            if (mainBeforePlayed != null && mainAfterPlayed != null)
-                                mainPart = mainBeforePlayed.Merge(mainAfterPlayed);
-                            else if (mainBeforePlayed != null)
-                                mainPart = mainBeforePlayed;
-                            else if (mainAfterPlayed != null)
-                                mainPart = mainAfterPlayed;
-                            if (mainPart == null)
-                                mainPart = new WordPart(letter.ToString(), cell, direction);
-
-                            if (paths2.ContainsKey(mainPart))
-                                continue;
-
-                            var pending = new HashSet<char>(path.Pending);
-                            pending.Remove(letter);
-
-                            if (pending.Count == 0 && !graph.IsValid(mainPart.Word))
-                                continue;
-
-                            var extras = new List<WordPart>(path.Extras);
-                            if (extraPart != null)
-                                extras.Add(extraPart);
-                            string played = fix == Fix.Prefix ? letter + path.Played : path.Played + letter;
-                            var path2 = new PlayPath(mainPart, new WordPartCollection(extras.ToConstant()), played, pending.ToConstant());
-                            
-                            if (path2.Main.Word.Length > 1 && graph.IsValid(path2.Main.Word))
-                                Debug(path2);
-
-                            paths2.Add(mainPart, path2);
-                        }
-                    }
-                }
-                Console.WriteLine();
-                paths.Clear();
-                paths.AddRange(paths2);
-            }
+                play = play.Next();
         }
         [CLSCompliant(false)]
         [TestCase(4, 3, null, Direction.Right)]
@@ -414,12 +213,6 @@ namespace Ded.Wordox
             else
                 Assert.IsNull(part);
         }
-        //public void TestGetWordPartOtherDirection()
-        //{
-        //    var board = new Board();
-        //    board.Play("MER", new Cell(4, 4), Direction.Right);
-        //    WordPart part = board.GetWordPart(new Cell(5, 4), Direction.Bottom, 'E');
-        //}
     }
     class AI
     {

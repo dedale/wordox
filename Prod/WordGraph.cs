@@ -318,5 +318,17 @@ namespace Ded.Wordox
     class Rack
     {
         public const int Size = 6;
+        #region Fields
+        private readonly ConstantSet<char> rack;
+        #endregion
+        public Rack(string rack)
+            : this(new ConstantSet<char>(rack))
+        {
+        }
+        public Rack(ConstantSet<char> rack)
+        {
+            this.rack = rack;
+        }
+        public ConstantSet<char> Letters { get { return rack; } }
     }
 }

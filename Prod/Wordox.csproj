@@ -63,6 +63,7 @@
       <DependentUpon>CellUserControl.cs</DependentUpon>
     </Compile>
     <Compile Include="Common.cs" />
+    <Compile Include="Play.cs" />
     <Compile Include="WordDownloader.cs" />
     <Compile Include="WordGraph.cs" />
     <Compile Include="Wordox.cs" />
