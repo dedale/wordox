@@ -286,18 +286,14 @@ namespace Ded.Wordox
         }
         public static ConstantSet<T> ToConstant<T>(this ISet<T> set)
         {
-            if (set is ConstantSet<T>)
-                return (ConstantSet<T>)set;
-            return new ConstantSet<T>(set);
+            return set as ConstantSet<T> ?? new ConstantSet<T>(set);
         }
     }
     static class IListExtensions
     {
         public static ConstantList<T> ToConstant<T>(this IList<T> list)
         {
-            if (list is ConstantList<T>)
-                return (ConstantList<T>)list;
-            return new ConstantList<T>(list);
+            return list as ConstantList<T> ?? new ConstantList<T>(list);
         }
     }
     static class StringExtensions
@@ -315,6 +311,10 @@ namespace Ded.Wordox
         {
             foreach (KeyValuePair<K, V> kv in other)
                 map.Add(kv.Key, kv.Value);
+        }
+        public static ConstantDictionary<K, V> ToConstant<K, V>(this IDictionary<K, V> map)
+        {
+            return map as ConstantDictionary<K, V> ?? new ConstantDictionary<K, V>(map);
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,7 +19,7 @@ namespace Ded.Wordox
         [TestCase(Board.Height, Board.Width)]
         public void TestNewOutOfRange(int row, int column)
         {
-            Assert.Throws<IndexOutOfRangeException>(() => new Cell(row, column));
+            Assert.Throws<OutOfBoardException>(() => new Cell(row, column));
         }
         [Test] public void TestEquals()
         {
@@ -96,7 +97,7 @@ namespace Ded.Wordox
                 {
                     var cell = new Cell(r, c);
                     bool star = stars.Contains(cell);
-                    Assert.AreEqual(star, cell.IsStar, string.Format("{0} should{1} be a star", cell, star ? string.Empty : " not"));
+                    Assert.AreEqual(star, cell.IsStar, string.Format(CultureInfo.InvariantCulture, "{0} should{1} be a star", cell, star ? string.Empty : " not"));
                 }
             }
         }
@@ -127,7 +128,7 @@ namespace Ded.Wordox
             Assert.AreEqual(Board.Center, start[0].Row);
             Assert.AreEqual(Board.Center, start[0].Column);
         }
-        private bool OutOfRange(string word, int row, int column, Direction direction)
+        private bool OutOfBoard(string word, int row, int column, Direction direction)
         {
             switch (direction)
             {
@@ -136,7 +137,7 @@ namespace Ded.Wordox
                 case Direction.Right:
                     return column + word.Length > Board.Width;
                 default:
-                    throw new ArgumentException(string.Format("Unknown direction : {0}", direction), "direction");
+                    throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Unknown direction : {0}", direction), "direction");
             }
         }
         private bool CanPlay(string word, int row, int column, Direction direction)
@@ -152,7 +153,7 @@ namespace Ded.Wordox
                         && column >= Math.Max(Board.Center - word.Length + 1, 0)
                         && column <= Board.Center + Math.Min(Board.Center - word.Length + 1, 0);
                 default:
-                    throw new ArgumentException(string.Format("Unknown direction : {0}", direction), "direction");
+                    throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Unknown direction : {0}", direction), "direction");
             }
         }
         [CLSCompliant(false)]
@@ -162,11 +163,11 @@ namespace Ded.Wordox
                                          [Values(Direction.Bottom, Direction.Right)] Direction direction)
         {
             var board = new Board();
-            bool outOfRange = OutOfRange(word, row, column, direction);
+            bool outOfBoard = OutOfBoard(word, row, column, direction);
             bool canPlay = CanPlay(word, row, column, direction);
             Action action = () => board = board.Play(new WordPart(word, new Cell(row, column), direction));
-            if (outOfRange)
-                Assert.Throws<IndexOutOfRangeException>(new TestDelegate(action));
+            if (outOfBoard)
+                Assert.Throws<OutOfBoardException>(new TestDelegate(action));
             else if (!canPlay)
                 Assert.Throws<ArgumentException>(new TestDelegate(action));
             else
@@ -198,6 +199,7 @@ namespace Ded.Wordox
             var play = new PlayGraph(graph, board, rack);
             for (int i = 0; i < 5; i++)
                 play = play.Next();
+            Assert.AreEqual(701, play.Valids.Count);
         }
         [CLSCompliant(false)]
         [TestCase(4, 3, null, Direction.Right)]

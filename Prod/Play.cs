@@ -1,11 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Ded.Wordox
 {
+    [Flags]
+    public enum WordStrategy
+    {
+        None = 0,
+        NoOneFixes = 1,
+        NoTwoMoreFixes = 2,
+        NoFixes = NoOneFixes | NoTwoMoreFixes,
+    }
+    public enum ScoreStrategy
+    {
+        None,
+        MaxPoints,
+        MaxDiff,
+    }
     class LetterPlay
     {
         #region Fields
@@ -19,6 +34,10 @@ namespace Ded.Wordox
         }
         public Cell Cell { get { return cell; } }
         public char Letter { get { return letter; } }
+        public override string ToString()
+        {
+            return string.Format(CultureInfo.InvariantCulture, "{0} @ {1}", letter, cell);
+        }
     }
     class PlayPath
     {
@@ -27,32 +46,26 @@ namespace Ded.Wordox
         private readonly WordPartCollection extras;
         private readonly ConstantList<LetterPlay> played;
         private readonly ConstantSet<char> pending;
-        private readonly bool valid;
-        private readonly PlayPath previous;
         #endregion
-        public PlayPath(WordPart main, LetterPlay letter, ConstantSet<char> pending, bool valid)
-            : this(main, WordPartCollection.Empty, new ConstantList<LetterPlay>(letter), pending, valid, null)
+        public PlayPath(WordPart main, LetterPlay letter, ConstantSet<char> pending)
+            : this(main, WordPartCollection.Empty, new ConstantList<LetterPlay>(letter), pending)
         {
         }
-        public PlayPath(WordPart main, WordPart extra, LetterPlay letter, ConstantSet<char> pending, bool valid)
-            : this(main, new WordPartCollection(extra), new ConstantList<LetterPlay>(letter), pending, valid, null)
+        public PlayPath(WordPart main, WordPart extra, LetterPlay letter, ConstantSet<char> pending)
+            : this(main, new WordPartCollection(extra), new ConstantList<LetterPlay>(letter), pending)
         {
         }
-        public PlayPath(WordPart main, WordPartCollection extras, ConstantList<LetterPlay> played, ConstantSet<char> pending, bool valid, PlayPath previous)
+        public PlayPath(WordPart main, WordPartCollection extras, ConstantList<LetterPlay> played, ConstantSet<char> pending)
         {
             this.main = main;
             this.extras = extras;
             this.played = played;
             this.pending = pending;
-            this.valid = valid;
-            this.previous = previous;
         }
         public WordPart Main { get { return main; } }
         public WordPartCollection Extras { get { return extras; } }
         public ConstantList<LetterPlay> Played { get { return played; } }
         public ConstantSet<char> Pending { get { return pending; } }
-        public bool IsValid { get { return valid; } }
-        public PlayPath Previous { get { return previous; } }
     }
     class WordPartPair
     {
@@ -89,21 +102,23 @@ namespace Ded.Wordox
             #region Fields
             private readonly WordGraph graph;
             private readonly Board board;
-            private readonly Dictionary<WordPart, PlayPath> paths;
+            private readonly ConstantDictionary<WordPart, PlayPath> paths;
+            private readonly ConstantList<PlayPath> valids;
             #endregion
             #region Private stuff
-            private PlayPath GetPath(WordPart mainPart, WordPart extraPart, LetterPlay played, ConstantSet<char> pending, bool valid)
+            private static PlayPath GetPath(WordPart mainPart, WordPart extraPart, LetterPlay played, ConstantSet<char> pending)
             {
                 if (extraPart == null)
-                    return new PlayPath(mainPart, played, pending.ToConstant(), valid);
-                return new PlayPath(mainPart, extraPart, played, pending.ToConstant(), valid);
+                    return new PlayPath(mainPart, played, pending.ToConstant());
+                return new PlayPath(mainPart, extraPart, played, pending.ToConstant());
             }
             #endregion
             public CtorHelper(WordGraph graph, Board board, Rack rack)
             {
                 this.graph = graph;
                 this.board = board;
-                paths = new Dictionary<WordPart, PlayPath>();
+                var tempPaths = new Dictionary<WordPart, PlayPath>();
+                var tempValids = new List<PlayPath>();
                 var cells = board.GetStartCells();
                 foreach (Cell cell in cells)
                 {
@@ -125,33 +140,41 @@ namespace Ded.Wordox
                             var pending = new HashSet<char>(rack.Letters);
                             pending.Remove(letter);
                             bool valid = mainPart.Word.Length == 1 || graph.IsValid(mainPart.Word);
-                            var path = GetPath(mainPart, extraPart, played, pending.ToConstant(), valid);
+                            var path = GetPath(mainPart, extraPart, played, pending.ToConstant());
                             if (valid)
+                            {
+                                tempValids.Add(path);
                                 Debug(path);
-                            paths.Add(mainPart, path);
+                            }
+                            tempPaths.Add(mainPart, path);
                         }
                     }
                 }
+                paths = new ConstantDictionary<WordPart, PlayPath>(tempPaths);
+                valids = new ConstantList<PlayPath>(tempValids);
             }
             public WordGraph Graph { get { return graph; } }
             public Board Board { get { return board; } }
-            public Dictionary<WordPart, PlayPath> Paths { get { return paths; } }
+            public ConstantDictionary<WordPart, PlayPath> Paths { get { return paths; } }
+            public ConstantList<PlayPath> Valids { get { return valids; } }
         }
         #endregion
         #region Fields
         private readonly WordGraph graph;
         private readonly Board board;
-        private readonly Dictionary<WordPart, PlayPath> paths;
+        private readonly ConstantDictionary<WordPart, PlayPath> paths;
+        private readonly ConstantList<PlayPath> valids;
         #endregion
         #region Private stuff
-        private PlayGraph(WordGraph graph, Board board, Dictionary<WordPart, PlayPath> paths)
+        private PlayGraph(WordGraph graph, Board board, ConstantDictionary<WordPart, PlayPath> paths, ConstantList<PlayPath> valids)
         {
             this.graph = graph;
             this.board = board;
             this.paths = paths;
+            this.valids = valids;
         }
         private PlayGraph(CtorHelper init)
-            : this(init.Graph, init.Board, init.Paths)
+            : this(init.Graph, init.Board, init.Paths, init.Valids)
         {
         }
         private static WordPartPair GetBeforeAfter(Board board, Cell cell, Direction direction, WordGraph graph, HashSet<char> choices, WordPart before = null, WordPart after = null)
@@ -185,6 +208,7 @@ namespace Ded.Wordox
         {
             get { return paths.Values; }
         }
+        public ConstantList<PlayPath> Valids { get { return valids; } }
         public bool Contains(WordPart part)
         {
             return paths.ContainsKey(part);
@@ -192,6 +216,7 @@ namespace Ded.Wordox
         public PlayGraph Next()
         {
             var newPaths = new Dictionary<WordPart, PlayPath>();
+            var newValids = new List<PlayPath>(valids);
             foreach (PlayPath path in paths.Values)
             {
                 Direction direction = path.Main.Direction;
@@ -245,14 +270,79 @@ namespace Ded.Wordox
                         else
                             played.Add(letterPlay);
                         bool valid = mainPart.Word.Length == 1 || graph.IsValid(mainPart.Word);
-                        var newPath = new PlayPath(mainPart, new WordPartCollection(extras.ToConstant()), played.ToConstant(), pending.ToConstant(), valid, path);
+                        var newPath = new PlayPath(mainPart, new WordPartCollection(extras.ToConstant()), played.ToConstant(), pending.ToConstant());
                         if (valid)
+                        {
+                            newValids.Add(newPath);
                             Debug(newPath);
+                        }
                         newPaths.Add(mainPart, newPath);
                     }
                 }
             }
-            return new PlayGraph(graph, board, newPaths);
+            return new PlayGraph(graph, board, newPaths.ToConstant(), newValids.ToConstant());
+        }
+    }
+    class PlayInfo : IComparable<PlayInfo>
+    {
+        #region Fields
+        private readonly bool vortex;
+        private readonly Score score;
+        private readonly bool hasOneFixes;
+        private readonly bool hasTwoMoreFixes;
+        #endregion
+        public PlayInfo(bool vortex, Score score, bool hasOneFixes, bool hasTwoMoreFixes)
+        {
+            this.vortex = vortex;
+            this.score = score;
+            this.hasOneFixes = hasOneFixes;
+            this.hasTwoMoreFixes = hasTwoMoreFixes;
+        }
+        public bool HasVortex { get { return vortex; } }
+        public bool Wins { get { return score.Other.Wins; } }
+        public int Diff { get { return score.Other.Points - score.Current.Points; } }
+        public int Points { get { return score.Other.Points; } }
+        public int CompareTo(PlayInfo other)
+        {
+            return PlayInfoComparer.Default.Compare(this, other);
+        }
+    }
+    class PlayInfoComparer : IComparer<PlayInfo>
+    {
+        #region Fields
+        private static readonly Lazy<PlayInfoComparer> none = new Lazy<PlayInfoComparer>(() => new PlayInfoComparer(ScoreStrategy.None, WordStrategy.None));
+        private readonly ScoreStrategy scoreStrategy;
+        private readonly WordStrategy wordStrategy;
+        #endregion
+        private int CompareScores(PlayInfo x, PlayInfo y)
+        {
+            switch (scoreStrategy)
+            {
+                case ScoreStrategy.None:
+                    return 0;
+                case ScoreStrategy.MaxDiff:
+                    return x.Diff.CompareTo(y.Diff);
+                case ScoreStrategy.MaxPoints:
+                    return x.Points.CompareTo(y.Points);
+                default:
+                    throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Unknown score strategy : {0}", scoreStrategy));
+            }
+        }
+        public PlayInfoComparer(ScoreStrategy scoreStrategy, WordStrategy wordStrategy)
+        {
+            this.scoreStrategy = scoreStrategy;
+            this.wordStrategy = wordStrategy;
+        }
+        public int Compare(PlayInfo x, PlayInfo y)
+        {
+            if (x.Wins ^ y.Wins)
+                return x.Wins ? 1 : -1;
+            int result = CompareScores(x, y);
+            return result;
+        }
+        public static PlayInfoComparer Default
+        {
+            get { return none.Value; }
         }
     }
 }

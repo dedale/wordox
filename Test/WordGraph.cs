@@ -146,6 +146,18 @@ namespace Ded.Wordox
             var graph = WordGraph.French;
             Assert.AreEqual(letter, graph.GetLetter(d));
         }
+        [TestCase("P")]
+        [TestCase("PE")]
+        [TestCase("PEN")]
+        [TestCase("PEND")]
+        [TestCase("PENDI")]
+        [TestCase("PENDIN")]
+        public void TestGetRandom(string pending)
+        {
+            var graph = WordGraph.French;
+            for (int i = 0; i < 10000; i++)
+                Assert.AreEqual(pending, graph.GetRandom(pending).Substring(0, pending.Length));
+        }
     }
     [TestFixture]
     public class WordVertexTest

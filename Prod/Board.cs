@@ -1,12 +1,37 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Ded.Wordox
 {
+    [Serializable]
+    public class OutOfBoardException : Exception
+    {
+        protected OutOfBoardException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+        public OutOfBoardException()
+        {
+        }
+        public OutOfBoardException(string message)
+            : base(message)
+        {
+        }
+        public OutOfBoardException(string format, params string[] args)
+            : base(string.Format(CultureInfo.InvariantCulture, format, args))
+        {
+        }
+        public OutOfBoardException(string message, Exception inner)
+            : base(message, inner)
+        {
+        }
+    }
     class Cell : IEquatable<Cell>
     {
         #region Fields
@@ -27,7 +52,7 @@ namespace Ded.Wordox
                         return null;
                     return new Cell(row, column + 1);
                 default:
-                    throw new ArgumentException(string.Format("Unknown direction : {0}", direction), "direction");
+                    throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Unknown direction : {0}", direction), "direction");
             }
         }
         #endregion
@@ -37,7 +62,7 @@ namespace Ded.Wordox
                 || column < 0
                 || row >= Board.Height
                 || column >= Board.Width)
-                throw new IndexOutOfRangeException(string.Format("Cannot create cell in {0},{1}", row, column));
+                throw new OutOfBoardException(string.Format(CultureInfo.InvariantCulture, "Cannot create cell in {0},{1}", row, column));
             this.row = row;
             this.column = column;
         }
@@ -45,7 +70,7 @@ namespace Ded.Wordox
         public int Column { get { return column; } }
         public override string ToString()
         {
-            return string.Format("{0},{1}", row, column);
+            return string.Format(CultureInfo.InvariantCulture, "{0},{1}", row, column);
         }
         public override int GetHashCode()
         {
@@ -137,16 +162,23 @@ namespace Ded.Wordox
         private const char Empty = '\0';
         #endregion
         #region Fields
-        private readonly char[,] board;
+        private readonly char[][] board;
         private readonly ConstantSet<Cell> cells;
         #endregion
         #region Private stuff
-        private Board(char[,] board, ConstantSet<Cell> cells)
+        private static char[][] BuildBoard()
+        {
+            var array = new char[Height][];
+            for (int c = 0; c < Height; c++)
+                array[c] = new char[Width];
+            return array;
+        }
+        private Board(char[][] board, ConstantSet<Cell> cells)
         {
             this.board = board;
             this.cells = cells;
         }
-        private bool Contains(ConstantSet<Cell> start, IEnumerable<Cell> played)
+        private static bool Contains(ConstantSet<Cell> start, IEnumerable<Cell> played)
         {
             foreach (Cell cell in played)
                 if (start.Contains(cell))
@@ -155,7 +187,7 @@ namespace Ded.Wordox
         }
         #endregion
         public Board()
-            : this(new char[Height, Width], new ConstantSet<Cell>())
+            : this(BuildBoard(), new ConstantSet<Cell>())
         {
         }
         public event CellUpdatedEventHandler CellUpdated;
@@ -172,7 +204,7 @@ namespace Ded.Wordox
                     int dc = i == 0 ? 0 : i - 2;
                     int row = cell.Row + dr;
                     int column = cell.Column + dc;
-                    if (row >= 0 && column >= 0 && row < Board.Height && column < Board.Width && board[row, column] == Empty)
+                    if (row >= 0 && column >= 0 && row < Board.Height && column < Board.Width && board[row][column] == Empty)
                         result.Add(new Cell(row, column));
                 }
             }
@@ -187,21 +219,21 @@ namespace Ded.Wordox
             for (int i = 1; i < part.Word.Length; i++)
             {
                 if (!current.TryGetNext(part.Direction, out current))
-                    throw new ArgumentException(string.Format("Cannot play {0} at {1}", part.Word, part.First));
+                    throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Cannot play {0} at {1}", part.Word, part.First));
                 list.Add(current);
             }
             if (!Contains(start, list))
-                throw new ArgumentException(string.Format("Cannot play {0} at {1}", part.Word, part.First));
-            var newBoard = new char[Height, Width];
+                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Cannot play {0} at {1}", part.Word, part.First));
+            var newBoard = BuildBoard();
             for (int i = 0; i < Height; i++)
                 for (int j = 0; j < Width; j++)
-                    newBoard[i, j] = board[i, j];
+                    newBoard[i][j] = board[i][j];
             var newCells = new HashSet<Cell>(cells);
             for (int i = 0; i < part.Word.Length; i++)
             {
                 Cell c = list[i];
                 char letter = part.Word[i];
-                newBoard[c.Row, c.Column] = letter;
+                newBoard[c.Row][c.Column] = letter;
                 newCells.Add(c);
                 if (CellUpdated != null)
                     CellUpdated(this, new CellUpdatedEventArgs(c, letter));
@@ -220,7 +252,7 @@ namespace Ded.Wordox
                     while (before.HasTop)
                     {
                         var top = before.Top;
-                        char prefix = board[top.Row, top.Column];
+                        char prefix = board[top.Row][top.Column];
                         if (prefix == Empty)
                             break;
                         word = prefix + word;
@@ -231,7 +263,7 @@ namespace Ded.Wordox
                     while (before.HasLeft)
                     {
                         var left = before.Left;
-                        char prefix = board[left.Row, left.Column];
+                        char prefix = board[left.Row][left.Column];
                         if (prefix == Empty)
                             break;
                         word = prefix + word;
@@ -253,7 +285,7 @@ namespace Ded.Wordox
                     while (after.HasBottom)
                     {
                         var bottom = after.Bottom;
-                        char suffix = board[bottom.Row, bottom.Column];
+                        char suffix = board[bottom.Row][bottom.Column];
                         if (suffix == Empty)
                             break;
                         word += suffix;
@@ -264,7 +296,7 @@ namespace Ded.Wordox
                     while (after.HasRight)
                     {
                         var right = after.Right;
-                        char suffix = board[right.Row, right.Column];
+                        char suffix = board[right.Row][right.Column];
                         if (suffix == Empty)
                             break;
                         word += suffix;
@@ -336,7 +368,7 @@ namespace Ded.Wordox
         public WordPart Merge(WordPart other)
         {
             if (last != other.first)
-                throw new ArgumentException(string.Format("Cannot merge last {0} with first {1}", last, other.first), "other");
+                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Cannot merge last {0} with first {1}", last, other.first), "other");
             if (direction != other.direction)
                 throw new ArgumentException("Cannot merge two directions", "other");
             if (word[word.Length - 1] != other.word[0])
@@ -363,6 +395,10 @@ namespace Ded.Wordox
         }
         #endregion
         public static WordPartCollection Empty { get { return empty; } }
+        public WordPartCollection()
+            : this(new ConstantList<WordPart>())
+        {
+        }
         public WordPartCollection(WordPart part)
             : this(new ConstantList<WordPart>(new[] { part }))
         {

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Globalization;
 
 namespace Ded.Wordox
 {
@@ -92,7 +93,7 @@ namespace Ded.Wordox
                 case Direction.Bottom:
                     return "ê";
                 default:
-                    throw new ArgumentException(string.Format("Unknown direction : {0}", direction));
+                    throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Unknown direction : {0}", direction));
             }
         }
         public string DirectionLabel

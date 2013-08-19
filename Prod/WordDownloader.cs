@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -24,7 +25,7 @@ namespace Ded.Wordox
             get { return count == words.Count; }
         }
     }
-    class WordDownloader
+    class WordDownloader : IDisposable
     {
         #region Fields
         private readonly WebClient wc;
@@ -34,27 +35,27 @@ namespace Ded.Wordox
         internal static int GetCount(string content)
         {
             const string one = "Il y a un seul mot";
-            if (content.IndexOf(one) > -1)
+            if (content.IndexOf(one, StringComparison.Ordinal) > -1)
                 return 1;
             const string prefix = "Il y a ";
             const string suffix = " mots";
-            int prefixPos = content.IndexOf(prefix);
+            int prefixPos = content.IndexOf(prefix, StringComparison.Ordinal);
             if (prefixPos == -1)
                 throw new FormatException("Word count prefix not found");
-            int suffixPos = content.IndexOf(suffix, prefixPos);
+            int suffixPos = content.IndexOf(suffix, prefixPos, StringComparison.Ordinal);
             if (suffixPos == -1)
                 throw new FormatException("Word count suffix not found");
             int start = prefixPos + prefix.Length;
-            return int.Parse(content.Substring(start, suffixPos - start));
+            return int.Parse(content.Substring(start, suffixPos - start), CultureInfo.InvariantCulture);
         }
         internal static ConstantSet<string> GetWords(string content)
         {
             const string prefix = "<span class='mot'>";
             const string suffix = "</span>";
-            int prefixPos = content.IndexOf(prefix);
+            int prefixPos = content.IndexOf(prefix, StringComparison.Ordinal);
             if (prefixPos == -1)
                 throw new FormatException("Word list prefix not found");
-            int suffixPos = content.IndexOf(suffix, prefixPos);
+            int suffixPos = content.IndexOf(suffix, prefixPos, StringComparison.Ordinal);
             if (suffixPos == -1)
                 throw new FormatException("Word list suffix not found");
             int start = prefixPos + prefix.Length;
@@ -74,7 +75,7 @@ namespace Ded.Wordox
             string content = null;
             try
             {
-                content = wc.DownloadString(string.Format(SecondAddressFormat, length, first, second));
+                content = wc.DownloadString(string.Format(CultureInfo.InvariantCulture, SecondAddressFormat, length, first, second));
             }
             catch (WebException)
             {
@@ -95,7 +96,7 @@ namespace Ded.Wordox
             string content = null;
             try
             {
-                content = wc.DownloadString(string.Format(FirstAddressFormat, length, first));
+                content = wc.DownloadString(string.Format(CultureInfo.InvariantCulture, FirstAddressFormat, length, first));
             }
             catch (WebException)
             {
@@ -117,7 +118,7 @@ namespace Ded.Wordox
             string content = null;
             try
             {
-                content = wc.DownloadString(string.Format(AllWordsAddressFormat, length));
+                content = wc.DownloadString(string.Format(CultureInfo.InvariantCulture, AllWordsAddressFormat, length));
             }
             catch (WebException)
             {
@@ -133,6 +134,11 @@ namespace Ded.Wordox
                 Console.WriteLine(length);
             }
         }
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+                wc.Dispose();
+        }
         #endregion
         public WordDownloader()
         {
@@ -142,5 +148,10 @@ namespace Ded.Wordox
                 GetAllWords(length);
         }
         public ISet<string> AllWords { get { return allWords; } }
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
     }
 }

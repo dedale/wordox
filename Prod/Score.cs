@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ namespace Ded.Wordox
 {
     class PlayerScore : IEquatable<PlayerScore>
     {
+        public const int WinPoints = 25;
         #region Fields
         private readonly int points;
         private readonly int stars;
@@ -19,7 +21,7 @@ namespace Ded.Wordox
         }
         public int Points { get { return points; } }
         public int Stars { get { return stars; } }
-        public PlayerScore Play(WordPart part)
+        public static PlayerScore Play(WordPart part)
         {
             int stars = 0;
             Cell cell = part.First;
@@ -51,8 +53,9 @@ namespace Ded.Wordox
         }
         public override string ToString()
         {
-            return string.Format("{0} ({1})", points, stars);
+            return string.Format(CultureInfo.InvariantCulture, "{0} ({1})", points, stars);
         }
+        public bool Wins { get { return points >= WinPoints; } }
     }
     class Score
     {
@@ -73,20 +76,23 @@ namespace Ded.Wordox
         public PlayerScore Other { get { return other; } }
         public Score Play(WordPart part)
         {
-            return new Score(other, current.Play(part));
+            return new Score(other, PlayerScore.Play(part));
         }
         public Score Play(PlayPath path)
         {
             int points = path.Played.Count;
             int stars = 0;
+            bool vortex = false;
             foreach (LetterPlay lp in path.Played)
                 if (lp.Cell.IsStar)
                     stars++;
+                else if (lp.Cell.IsVortex)
+                    vortex = true;
             int taken = path.Main.Word.Length - path.Played.Count;
             foreach (WordPart extra in path.Extras)
                 taken += extra.Word.Length - 1;
-            var newOther = new PlayerScore(current.Points + points + taken, current.Stars + stars);
-            var newCurrent = new PlayerScore(other.Points - taken, other.Stars);
+            var newOther = new PlayerScore(current.Points + points + taken + (vortex ? current.Stars + stars : 0), vortex ? 0 : current.Stars + stars);
+            var newCurrent = new PlayerScore(other.Points - taken, vortex ? 0 : other.Stars);
             return new Score(newCurrent, newOther);
         }
     }

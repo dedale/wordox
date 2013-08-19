@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,7 +25,7 @@ namespace Ded.Wordox
         public FixEdge(char letter, Fix fix, WordVertex vertex)
         {
             if (fix != Fix.Prefix && fix != Fix.Suffix)
-                throw new ArgumentException(string.Format("Invalid fixes : {0}", fix), "fix");
+                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Invalid fixes : {0}", fix), "fix");
             this.letter = letter;
             this.fix = fix;
             this.vertex = vertex;
@@ -81,7 +82,7 @@ namespace Ded.Wordox
         public ConstantSet<char> GetLetters(Fix fix)
         {
             if (fix != Fix.Prefix && fix != Fix.Suffix)
-                throw new ArgumentException(string.Format("Bad fix : {0}", fix), "fix");
+                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Bad fix : {0}", fix), "fix");
             Dictionary<char, FixEdge> map;
             if (!edges.TryGetValue(fix, out map))
                 return new ConstantSet<char>();
@@ -167,7 +168,7 @@ namespace Ded.Wordox
             if (vertices.TryGetValue(word, out vertex))
             {
                 if (valid)
-                    throw new ArgumentException(string.Format("{0} already found but not valid (are words sorted by size?)", word), "valid");
+                    throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "{0} already found but not valid (are words sorted by size?)", word), "valid");
                 return vertex;
             }
             vertex = new WordVertex(word, valid);
@@ -199,7 +200,7 @@ namespace Ded.Wordox
                 case Fix.All:
                     return allowed == Fix.All;
                 default:
-                    throw new ArgumentException(string.Format("Unknown {0} fixes", fixes), "fixes");
+                    throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Unknown {0} fixes", fixes), "fixes");
             }
         }
         internal char GetLetter(double d)
@@ -281,15 +282,15 @@ namespace Ded.Wordox
         {
             WordVertex vertex;
             if (!vertices.TryGetValue(part, out vertex))
-                throw new ArgumentException(string.Format("Unknown word part : {0}", part), "part");
+                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Unknown word part : {0}", part), "part");
             //if (fix != Fix.Prefix && fix != Fix.Suffix)
-            //    throw new ArgumentException(string.Format("Bad fix : {0}", fix), "fix");
+            //    throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Bad fix : {0}", fix), "fix");
             return vertex.GetLetters(fix);
         }
         public bool IsValid(string word)
         {
             if (string.IsNullOrEmpty(word) || word.Length == 1)
-                throw new ArgumentException(string.Format("{0} is too short", word), "word");
+                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "{0} is too short", word), "word");
             WordVertex vertex;
             if (vertices.TryGetValue(word, out vertex))
                 return vertex.IsValid;
@@ -299,10 +300,11 @@ namespace Ded.Wordox
         {
             get { return french.Value; }
         }
-        public string GetRandom()
+        public string GetRandom(string pending = "")
         {
             var sb = new StringBuilder(Rack.Size);
-            for (int i = 0; i < sb.Capacity; i++)
+            sb.Append(pending);
+            while (sb.Length < sb.Capacity)
                 sb.Append(GetLetter(random.NextDouble()));
             return sb.ToString();
         }
