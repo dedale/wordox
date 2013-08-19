@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Ded.Wordox
 {
-    // TODO IGNORE FIXES NOT PLAYABLE
+    // TODO CHOOSE LOWEST PROBA FOR COMPARABLE MOVES
     class Game
     {
         #region class RandomValues
@@ -102,6 +102,7 @@ namespace Ded.Wordox
             var validWordComparer = new ValidWordComparer(WordStrategy.NoOneFixes);
             words.Sort(validWordComparer);
             words.Reverse();
+            Console.WriteLine("{0} words", words.Count);
             foreach (var word in words)
                 Console.WriteLine("{0} 1:{1}", word.Word, word.OneFixes);
 
@@ -120,58 +121,70 @@ namespace Ded.Wordox
         {
             var board = new Board();
             var score = new Score();
-            var rack = new Rack("NULLES");//graph.GetRandom());
+            var rack = new Rack(graph.GetRandom());
             Console.WriteLine("rack: " + rack.Value);
             WordPart part = GetFirstWord(rack);
             Console.WriteLine("word: {0} @ {1} {2}", part.Word, part.First, part.Direction);
             board = board.Play(part);
             score = score.Play(part);
-            Console.WriteLine("score: " + score);
-            board.Write();
-            Console.Write("-------------------------\n");
-
             var letters = new List<char>(rack.Letters);
             foreach (char c in part.Word)
                 letters.Remove(c);
-            //Assert.AreEqual(Rack.Size, letters.Count + part.Word.Length);
+            Console.WriteLine("score: " + score);
+            board.Write();
 
-            rack = new Rack("GOOAAI");//graph.GetRandom(new string(letters.ToArray())));
-            Console.WriteLine("rack: " + rack.Value);
-            var play = new PlayGraph(graph, board, rack);
-            for (int i = 1; i < Rack.Size; i++)
-                play = play.Next();
-            var valids = new List<PlayPath>(play.Valids);
-            var comparer = new PlayInfoComparer(ScoreStrategy.MaxDiff, WordStrategy.NoFixes);
-            var reverse = new ReverseComparer<PlayInfo>(comparer);
-            var infos = new List<Tuple<PlayInfo, PlayPath>>();
-            foreach (PlayPath path in valids)
+            while (!score.Other.Wins)
+            //for (int t = 0; t < 4; t++)
             {
-                bool vortex = false;
-                foreach (LetterPlay lp in path.Played)
-                    vortex |= lp.Cell.IsVortex;
-                var info = new PlayInfo(vortex, score.Play(path), graph.GetOneFixes(path.Main.Word) != Fix.None, false);
-                infos.Add(new Tuple<PlayInfo, PlayPath>(info, path));
+                Console.Write("------------------------------\n");
+                rack = new Rack(graph.GetRandom(new string(letters.ToArray())));
+                Console.WriteLine("rack: " + rack.Value);
+                var play = new PlayGraph(graph, board, rack);
+                for (int i = 1; i < Rack.Size; i++)
+                    play = play.Next();
+                Console.WriteLine("{0} moves", play.Valids.Count);
+                var valids = new List<PlayPath>(play.Valids);
+                var comparer = new PlayInfoComparer(ScoreStrategy.MaxDiff, WordStrategy.NoFixes);
+                var reverse = new ReverseComparer<PlayInfo>(comparer);
+                var infos = new List<Tuple<PlayInfo, PlayPath>>();
+                foreach (PlayPath path in valids)
+                {
+                    bool vortex = false;
+                    foreach (LetterPlay lp in path.Played)
+                        vortex |= lp.Cell.IsVortex;
+                    var info = new PlayInfo(vortex, score.Play(path), play.GetFixes(path) != Fix.None, false);
+                    infos.Add(new Tuple<PlayInfo, PlayPath>(info, path));
+                }
+                infos.Sort((x, y) => reverse.Compare(x.Item1, y.Item1));
+                int max = 0;
+                foreach (Tuple<PlayInfo, PlayPath> tuple in infos)
+                {
+                    PlayInfo info = tuple.Item1;
+                    PlayPath path = tuple.Item2;
+                    if (max == 0)
+                    {
+                        max = info.Points;
+                        board = board.Play(path.Main);
+                        score = score.Play(path);
+                        Console.WriteLine("score: " + score);
+                        board.Write();
+                        if (info.HasVortex)
+                        {
+                            board = new Board();
+                            letters.Clear();
+                        }
+                        else
+                        {
+                            letters = new List<char>(rack.Letters);
+                            foreach (LetterPlay lp in path.Played)
+                                letters.Remove(lp.Letter);
+                        }
+                    }
+                    if (info.Points >= max)
+                        Console.WriteLine("word: {0} @ {1} {2} - {3}{4}{5}[{6}] ({7}){8}", path.Main.Word, path.Main.First, path.Main.Direction,
+                                          info.HasFixes ? "fixes " : "", info.HasVortex ? "vortex " : "", info.Points, info.Diff.ToString("+#;-#;0"), info.Stars, info.Wins ? " wins" : "");
+                }
             }
-            infos.Sort((x, y) => reverse.Compare(x.Item1, y.Item1));
-            int max = 0;
-            foreach (Tuple<PlayInfo, PlayPath> tuple in infos)
-            {
-                PlayInfo info = tuple.Item1;
-                PlayPath path = tuple.Item2;
-                if (max == 0)
-                    max = info.Points;
-                if (info.Points >= max)
-                    Console.WriteLine("word: {0} @ {1} {2} - {3}{4}{5} ({6}){7} - {8}", path.Main.Word, path.Main.First, path.Main.Direction,
-                                      info.HasFixes ? "fixes " : "", info.HasVortex ? "vortex " : "", info.Points, info.Stars, info.Wins ? " wins" : "",
-                                      info.Score);
-            }
-
-            //Console.WriteLine("word: {0} @ {1} {2}", part.Word, part.First, part.Direction);
-            //board = board.Play(part);
-            //score = score.Play(part);
-            //Console.WriteLine("score: " + score);
-            //board.Write();
-            //Console.Write("-------------------------\n");
         }
     }
     [TestFixture]

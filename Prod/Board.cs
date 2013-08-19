@@ -192,6 +192,7 @@ namespace Ded.Wordox
             : this(BuildBoard(), new ConstantSet<Cell>())
         {
         }
+        // TODO Wrap into dedicated object for Play()
         public event CellUpdatedEventHandler CellUpdated;
         public ConstantSet<Cell> GetStartCells()
         {

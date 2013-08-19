@@ -305,13 +305,13 @@ namespace Ded.Wordox
             }
             return new ConstantSet<ValidWord>();
         }
-        public Fix GetOneFixes(string word)
-        {
-            WordVertex vertex;
-            if (vertices.TryGetValue(word, out vertex))
-                return vertex.OneFixes;
-            return Fix.None;
-        }
+        //public Fix GetOneFixes(string word)
+        //{
+        //    WordVertex vertex;
+        //    if (vertices.TryGetValue(word, out vertex))
+        //        return vertex.OneFixes;
+        //    return Fix.None;
+        //}
         public ConstantSet<char> GetLetters(string part, Fix fix)
         {
             WordVertex vertex;
@@ -355,6 +355,10 @@ namespace Ded.Wordox
                 sorted.Add(counts[c], c);
             foreach (int count in sorted.Keys)
                 Console.WriteLine("{0} : {1}", sorted[count], count);
+        }
+        public bool Contains(string part)
+        {
+            return vertices.ContainsKey(part);
         }
     }
     class Rack

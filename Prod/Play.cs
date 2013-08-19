@@ -159,6 +159,30 @@ namespace Ded.Wordox
             public ConstantList<PlayPath> Valids { get { return valids; } }
         }
         #endregion
+        #region class Choices
+        private sealed class Choices
+        {
+            #region Fields
+            private readonly WordPartPair main;
+            private readonly WordPartPair extra;
+            private readonly ConstantSet<char> letters;
+            #endregion
+            public Choices(WordGraph graph, Board board, PlayPath path, Fix fix, Cell cell)
+            {
+                Direction direction = path.Main.Direction;
+                var otherDirection = direction == Direction.Bottom ? Direction.Right : Direction.Bottom;
+                var choices = new HashSet<char>(path.Pending);
+                WordPart before = fix == Fix.Suffix ? path.Main : null;
+                WordPart after = fix == Fix.Prefix ? path.Main : null;
+                main = GetBeforeAfter(board, cell, direction, graph, choices, before, after);
+                extra = GetBeforeAfter(board, cell, otherDirection, graph, choices);
+                letters = choices.ToConstant();
+            }
+            public WordPartPair Main { get { return main; } }
+            public WordPartPair Extra { get { return extra; } }
+            public ConstantSet<char> Letters { get { return letters; } }
+        }
+        #endregion
         #region Fields
         private readonly WordGraph graph;
         private readonly Board board;
@@ -181,11 +205,32 @@ namespace Ded.Wordox
         {
             before = before ?? board.GetBeforePart(cell, direction);
             after = after ?? board.GetAfterPart(cell, direction);
-            if (before != null)
+            if (before != null && graph.Contains(before.Word))
                 choices.IntersectWith(graph.GetLetters(before.Word, Fix.Suffix));
-            if (after != null)
+            if (after != null && graph.Contains(after.Word))
                 choices.IntersectWith(graph.GetLetters(after.Word, Fix.Prefix));
             return new WordPartPair(before, after);
+        }
+        private static IEnumerable<Tuple<Fix, Cell>> GetFixCells(PlayPath path)
+        {
+            Direction direction = path.Main.Direction;
+            var start = new List<Tuple<Fix, Cell>>();
+            switch (direction)
+            {
+                case Direction.Right:
+                    if (path.Main.First.HasLeft)
+                        start.Add(new Tuple<Fix, Cell>(Fix.Prefix, path.Main.First.Left));
+                    if (path.Main.Last.HasRight)
+                        start.Add(new Tuple<Fix, Cell>(Fix.Suffix, path.Main.Last.Right));
+                    break;
+                case Direction.Bottom:
+                    if (path.Main.First.HasTop)
+                        start.Add(new Tuple<Fix, Cell>(Fix.Prefix, path.Main.First.Top));
+                    if (path.Main.Last.HasBottom)
+                        start.Add(new Tuple<Fix, Cell>(Fix.Suffix, path.Main.Last.Bottom));
+                    break;
+            }
+            return start;
         }
         //private static void Debug(PlayPath path)
         //{
@@ -219,41 +264,20 @@ namespace Ded.Wordox
             var newValids = new List<PlayPath>(valids);
             foreach (PlayPath path in paths.Values)
             {
-                Direction direction = path.Main.Direction;
-                var start = new List<Tuple<Cell, Fix>>();
-                switch (direction)
+                IEnumerable<Tuple<Fix, Cell>> start = GetFixCells(path);
+                foreach (Tuple<Fix, Cell> fixCell in start)
                 {
-                    case Direction.Right:
-                        if (path.Main.First.HasLeft)
-                            start.Add(new Tuple<Cell, Fix>(path.Main.First.Left, Fix.Prefix));
-                        if (path.Main.Last.HasRight)
-                            start.Add(new Tuple<Cell, Fix>(path.Main.Last.Right, Fix.Suffix));
-                        break;
-                    case Direction.Bottom:
-                        if (path.Main.First.HasTop)
-                            start.Add(new Tuple<Cell, Fix>(path.Main.First.Top, Fix.Prefix));
-                        if (path.Main.Last.HasBottom)
-                            start.Add(new Tuple<Cell, Fix>(path.Main.Last.Bottom, Fix.Suffix));
-                        break;
-                }
-                foreach (Tuple<Cell, Fix> cellFix in start)
-                {
-                    Cell cell = cellFix.Item1;
-                    Fix fix = cellFix.Item2;
-                    var otherDirection = direction == Direction.Bottom ? Direction.Right : Direction.Bottom;
-                    var choices = new HashSet<char>(path.Pending);
-                    WordPartPair extraPair = GetBeforeAfter(board, cell, otherDirection, graph, choices);
-                    WordPart before = fix == Fix.Suffix ? path.Main : null;
-                    WordPart after = fix == Fix.Prefix ? path.Main : null;
-                    WordPartPair mainPair = GetBeforeAfter(board, cell, direction, graph, choices, before, after);
-                    if (choices.Count == 0)
+                    Fix fix = fixCell.Item1;
+                    Cell cell = fixCell.Item2;
+                    var choices = new Choices(graph, board, path, fix, cell);
+                    if (choices.Letters.Count == 0)
                         continue;
-                    foreach (char letter in choices)
+                    foreach (char letter in choices.Letters)
                     {
-                        WordPart mainPart = mainPair.Play(cell, letter);
+                        WordPart mainPart = choices.Main.Play(cell, letter);
                         if (newPaths.ContainsKey(mainPart))
                             continue;
-                        WordPart extraPart = extraPair.Play(cell, letter);
+                        WordPart extraPart = choices.Extra.Play(cell, letter);
                         if (extraPart != null && !graph.IsValid(extraPart.Word))
                             continue;
                         var pending = new HashSet<char>(path.Pending);
@@ -281,6 +305,20 @@ namespace Ded.Wordox
                 }
             }
             return new PlayGraph(graph, board, newPaths.ToConstant(), newValids.ToConstant());
+        }
+        public Fix GetFixes(PlayPath path)
+        {
+            var result = Fix.None;
+            IEnumerable<Tuple<Fix, Cell>> start = GetFixCells(path);
+            foreach (Tuple<Fix, Cell> fixCell in start)
+            {
+                Fix fix = fixCell.Item1;
+                Cell cell = fixCell.Item2;
+                var choices = new Choices(graph, board, path, fix, cell);
+                if (choices.Letters.Count > 0)
+                    result |= fix;
+            }
+            return result;
         }
     }
     class PlayInfo : IComparable<PlayInfo>
@@ -310,8 +348,6 @@ namespace Ded.Wordox
         {
             return PlayInfoComparer.Default.Compare(this, other);
         }
-        // TODO REMOVE
-        public Score Score { get { return score; } }
     }
     class PlayInfoComparer : IComparer<PlayInfo>
     {
@@ -331,7 +367,7 @@ namespace Ded.Wordox
         }
         private static int CompareVortexes(PlayInfo x, PlayInfo y)
         {
-            return -x.HasVortex.CompareTo(y.HasVortex);
+            return x.HasVortex.CompareTo(y.HasVortex);
         }
         private int CompareWords(PlayInfo x, PlayInfo y)
         {

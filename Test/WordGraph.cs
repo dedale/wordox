@@ -96,15 +96,15 @@ namespace Ded.Wordox
             var valids = graph.GetValids(word, fixes);
             Assert.AreEqual(count, valids.Count);
         }
-        [TestCase("MER", Fix.All)]
-        [TestCase("MERE", Fix.Prefix)]
-        [TestCase("AMER", Fix.Suffix)]
-        [TestCase("AMERE", Fix.None)]
-        public void TestGetFixes(string word, Fix fixes)
-        {
-            var graph = new WordGraph(new[] { "MER", "AMER", "MERE", "AMERE" });
-            Assert.AreEqual(fixes, graph.GetOneFixes(word));
-        }
+        //[TestCase("MER", Fix.All)]
+        //[TestCase("MERE", Fix.Prefix)]
+        //[TestCase("AMER", Fix.Suffix)]
+        //[TestCase("AMERE", Fix.None)]
+        //public void TestGetFixes(string word, Fix fixes)
+        //{
+        //    var graph = new WordGraph(new[] { "MER", "AMER", "MERE", "AMERE" });
+        //    Assert.AreEqual(fixes, graph.GetOneFixes(word));
+        //}
         [TestCase(Fix.None, Fix.None, true)]
         [TestCase(Fix.None, Fix.Prefix, true)]
         [TestCase(Fix.None, Fix.Suffix, true)]
@@ -168,14 +168,14 @@ namespace Ded.Wordox
     [TestFixture]
     public class WordVertexTest
     {
-        [Test] public void TestOneFixes()
-        {
-            var graph = new WordGraph(new[] { "MOT", "MOTS", "DEUX", "MER", "AMER", "MERE", "NE", "ANE" });
-            Assert.AreEqual(Fix.None, graph.GetOneFixes("MOTS"));
-            Assert.AreEqual(Fix.Suffix, graph.GetOneFixes("MOT"));
-            Assert.AreEqual(Fix.Prefix, graph.GetOneFixes("NE"));
-            Assert.AreEqual(Fix.All, graph.GetOneFixes("MER"));
-        }
+        //[Test] public void TestOneFixes()
+        //{
+        //    var graph = new WordGraph(new[] { "MOT", "MOTS", "DEUX", "MER", "AMER", "MERE", "NE", "ANE" });
+        //    Assert.AreEqual(Fix.None, graph.GetOneFixes("MOTS"));
+        //    Assert.AreEqual(Fix.Suffix, graph.GetOneFixes("MOT"));
+        //    Assert.AreEqual(Fix.Prefix, graph.GetOneFixes("NE"));
+        //    Assert.AreEqual(Fix.All, graph.GetOneFixes("MER"));
+        //}
     }
     [TestFixture]
     public class ValidWordTest
