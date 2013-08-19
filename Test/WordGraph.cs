@@ -103,7 +103,7 @@ namespace Ded.Wordox
         public void TestGetFixes(string word, Fix fixes)
         {
             var graph = new WordGraph(new[] { "MER", "AMER", "MERE", "AMERE" });
-            Assert.AreEqual(fixes, graph.GetFixes(word));
+            Assert.AreEqual(fixes, graph.GetOneFixes(word));
         }
         [TestCase(Fix.None, Fix.None, true)]
         [TestCase(Fix.None, Fix.Prefix, true)]
@@ -152,22 +152,72 @@ namespace Ded.Wordox
         [TestCase("PEND")]
         [TestCase("PENDI")]
         [TestCase("PENDIN")]
-        public void TestGetRandom(string pending)
+        public void TestGetRandomAppend(string pending)
         {
             var graph = WordGraph.French;
             for (int i = 0; i < 10000; i++)
                 Assert.AreEqual(pending, graph.GetRandom(pending).Substring(0, pending.Length));
         }
+        [Test] public void TestGetRandom()
+        {
+            var graph = WordGraph.French;
+            for (int i = 0; i < 10000; i++)
+                Assert.AreEqual(Rack.Size, graph.GetRandom().Length);
+        }
     }
     [TestFixture]
     public class WordVertexTest
     {
-        [Test] public void Test()
+        [Test] public void TestOneFixes()
         {
-            var m = new WordVertex("M", false);
-            var me = new WordVertex("ME", true);
-            var edge = new FixEdge('E', Fix.Suffix, me);
-            m.Add(edge);
+            var graph = new WordGraph(new[] { "MOT", "MOTS", "DEUX", "MER", "AMER", "MERE", "NE", "ANE" });
+            Assert.AreEqual(Fix.None, graph.GetOneFixes("MOTS"));
+            Assert.AreEqual(Fix.Suffix, graph.GetOneFixes("MOT"));
+            Assert.AreEqual(Fix.Prefix, graph.GetOneFixes("NE"));
+            Assert.AreEqual(Fix.All, graph.GetOneFixes("MER"));
+        }
+    }
+    [TestFixture]
+    public class ValidWordTest
+    {
+        private static void TestSort(ValidWordComparer comparer, ValidWord x, ValidWord y, int expected)
+        {
+            if (expected != 0)
+            {
+                var list = new List<ValidWord> { x, y };
+                list.Sort(comparer);
+                list.Reverse();
+                Assert.IsTrue(ReferenceEquals(expected < 0 ? y : x, list[0]));
+                Assert.IsTrue(ReferenceEquals(expected < 0 ? x : y, list[1]));
+            }
+        }
+        [TestCase("MOT", "MOTS", -1)]
+        [TestCase("MOT", "MOT", 0)]
+        public void TestCompareLengthSameFixes(string first, string second, int expected)
+        {
+            foreach (WordStrategy strategy in Enum.GetValues(typeof(WordStrategy)))
+                foreach (Fix fix in Enum.GetValues(typeof(Fix)))
+                {
+                    var comparer = new ValidWordComparer(strategy);
+                    var x = new ValidWord(first, fix);
+                    var y = new ValidWord(second, fix);
+                    Assert.AreEqual(expected, comparer.Compare(x, y));
+                    Assert.AreEqual(-expected, comparer.Compare(y, x));
+                    TestSort(comparer, x, y, expected);
+                }
+        }
+        [CLSCompliant(false)]
+        [TestCase("MOT", Fix.None, "MOT", Fix.None, 0)]
+        [TestCase("MOT", Fix.None, "MOTS", Fix.None, -1)]
+        [TestCase("MOT", Fix.None, "MOTS", Fix.Prefix, 1)]
+        public void TestCompareNoOneFixes(string w1, Fix f1, string w2, Fix f2, int expected)
+        {
+            var comparer = new ValidWordComparer(WordStrategy.NoOneFixes);
+            var x = new ValidWord(w1, f1);
+            var y = new ValidWord(w2, f2);
+            Assert.AreEqual(expected, comparer.Compare(x, y));
+            Assert.AreEqual(-expected, comparer.Compare(y, x));
+            TestSort(comparer, x, y, expected);
         }
     }
 }

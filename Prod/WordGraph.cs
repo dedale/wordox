@@ -59,14 +59,15 @@ namespace Ded.Wordox
             }
             map.Add(edge.Letter, edge);
         }
-        public Fix Fixes
+        public Fix OneFixes
         {
             get
             {
                 var fixes = Fix.None;
                 foreach (Fix f in edges.Keys)
-                    if (edges[f].Count > 0)
-                        fixes |= f;
+                    foreach (FixEdge edge in edges[f].Values)
+                        if (edge.Vertex.IsValid)
+                            fixes |= f;
                 return fixes;
             }
         }
@@ -93,15 +94,15 @@ namespace Ded.Wordox
     {
         #region Fields
         private readonly string word;
-        private readonly Fix fixes;
+        private readonly Fix oneFixes;
         #endregion
-        public ValidWord(string word, Fix fixes)
+        public ValidWord(string word, Fix oneFixes)
         {
             this.word = word;
-            this.fixes = fixes;
+            this.oneFixes = oneFixes;
         }
         public string Word { get { return word; } }
-        public Fix Fixes { get { return fixes; } }
+        public Fix OneFixes { get { return oneFixes; } }
         public override string ToString()
         {
             return word;
@@ -118,6 +119,39 @@ namespace Ded.Wordox
             if (other == null)
                 return false;
             return word == other.word;
+        }
+    }
+    class ValidWordComparer : IComparer<ValidWord>
+    {
+        #region Fields
+        private readonly WordStrategy strategy;
+        #endregion
+        private int CompareStrategy(ValidWord x, ValidWord y)
+        {
+            switch (strategy)
+            {
+                case WordStrategy.None:
+                    return 0;
+                case WordStrategy.NoOneFixes:
+                    return -(x.OneFixes != Fix.None).CompareTo(y.OneFixes != Fix.None);
+                case WordStrategy.NoTwoMoreFixes:
+                    return 0;//-(x.TwoMoreFixes != Fix.None).CompareTo(y.TwoMoreFixes != Fix.None);
+                case WordStrategy.NoFixes:
+                    return 0;
+                default:
+                    throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Unknown word strategy : {0}", strategy));
+            }
+        }
+        public ValidWordComparer(WordStrategy strategy)
+        {
+            this.strategy = strategy;
+        }
+        public int Compare(ValidWord x, ValidWord y)
+        {
+            int result = CompareStrategy(x, y);
+            if (result == 0)
+                return x.Word.Length.CompareTo(y.Word.Length);
+            return result;
         }
     }
     class WordGraph
@@ -252,7 +286,7 @@ namespace Ded.Wordox
             {
                 var result = new HashSet<ValidWord>();
                 foreach (var word in set)
-                    result.Add(new ValidWord(word, vertices[word].Fixes));
+                    result.Add(new ValidWord(word, vertices[word].OneFixes));
                 return result.ToConstant();
             }
             return new ConstantSet<ValidWord>();
@@ -265,17 +299,17 @@ namespace Ded.Wordox
             {
                 var result = new HashSet<ValidWord>();
                 foreach (string word in set)
-                    if (Select(vertices[word].Fixes, fixes))
-                        result.Add(new ValidWord(word, vertices[word].Fixes));
+                    if (Select(vertices[word].OneFixes, fixes))
+                        result.Add(new ValidWord(word, vertices[word].OneFixes));
                 return result.ToConstant();
             }
             return new ConstantSet<ValidWord>();
         }
-        public Fix GetFixes(string word)
+        public Fix GetOneFixes(string word)
         {
             WordVertex vertex;
             if (vertices.TryGetValue(word, out vertex))
-                return vertex.Fixes;
+                return vertex.OneFixes;
             return Fix.None;
         }
         public ConstantSet<char> GetLetters(string part, Fix fix)
@@ -302,11 +336,17 @@ namespace Ded.Wordox
         }
         public string GetRandom(string pending = "")
         {
-            var sb = new StringBuilder(Rack.Size);
-            sb.Append(pending);
-            while (sb.Length < sb.Capacity)
-                sb.Append(GetLetter(random.NextDouble()));
-            return sb.ToString();
+            var ai = new AI(this);
+            while (true)
+            {
+                var sb = new StringBuilder(Rack.Size);
+                sb.Append(pending);
+                while (sb.Length < sb.Capacity)
+                    sb.Append(GetLetter(random.NextDouble()));
+                string value = sb.ToString();
+                if (ai.FindLongest(value).Count > 0)
+                    return value;
+            }
         }
         public void TellStats()
         {
@@ -321,16 +361,67 @@ namespace Ded.Wordox
     {
         public const int Size = 6;
         #region Fields
-        private readonly ConstantSet<char> rack;
+        private readonly ConstantList<char> rack;
+        private readonly string value;
         #endregion
         public Rack(string rack)
-            : this(new ConstantSet<char>(rack))
+            : this(new ConstantList<char>(rack.ToArray()))
         {
         }
-        public Rack(ConstantSet<char> rack)
+        public Rack(ConstantList<char> rack)
         {
             this.rack = rack;
+            value = new string(rack.ToArray());
+            if (value.Length != Size)
+                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Expected {0} letters but got {1} ({2})", Size, value.Length, value));
         }
-        public ConstantSet<char> Letters { get { return rack; } }
+        public ConstantList<char> Letters { get { return rack; } }
+        public string Value { get { return value; } }
+        public override string ToString()
+        {
+            return value;
+        }
+    }
+    class AI
+    {
+        #region Fields
+        private readonly WordGraph graph;
+        #endregion
+        #region Private stuff
+        private void FindLongest(string word, HashSet<ValidWord> set, int pending)
+        {
+            if (pending == 0)
+                set.AddRange(Find(word));
+            else
+                for (int i = 0; i < word.Length; i++)
+                    FindLongest(word.Remove(i, 1), set, pending - 1);
+        }
+        #endregion
+        public AI(WordGraph graph)
+        {
+            this.graph = graph;
+        }
+        public ConstantSet<ValidWord> Find(string word)
+        {
+            return graph.GetValids(word);
+        }
+        public ConstantSet<ValidWord> FindLongest(Rack rack)
+        {
+            return FindLongest(rack.Value);
+        }
+        public ConstantSet<ValidWord> FindLongest(string word)
+        {
+            ConstantSet<ValidWord> found = Find(word);
+            if (found.Count > 0)
+                return found;
+            for (int pending = 1; pending <= word.Length - 2; pending++)
+            {
+                var set = new HashSet<ValidWord>();
+                FindLongest(word, set, pending);
+                if (set.Count > 0)
+                    return set.ToConstant();
+            }
+            return new ConstantSet<ValidWord>();
+        }
     }
 }

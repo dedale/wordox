@@ -144,7 +144,7 @@ namespace Ded.Wordox
                             if (valid)
                             {
                                 tempValids.Add(path);
-                                Debug(path);
+                                //Debug(path);
                             }
                             tempPaths.Add(mainPart, path);
                         }
@@ -187,18 +187,18 @@ namespace Ded.Wordox
                 choices.IntersectWith(graph.GetLetters(after.Word, Fix.Prefix));
             return new WordPartPair(before, after);
         }
-        private static void Debug(PlayPath path)
-        {
-            var sb = new StringBuilder();
-            sb.AppendFormat("{0} {1} {2}", path.Main.First, path.Main.Direction, path.Main.Word);
-            if (path.Extras.Count > 0)
-                foreach (WordPart extra in path.Extras)
-                    sb.AppendFormat(" [{0} {1} {2}]", extra.First, extra.Direction, extra.Word);
-            sb.AppendFormat(" +{0}", string.Join(string.Empty, (from lp in path.Played select lp.Letter).ToArray()));
-            if (path.Pending.Count > 0)
-                sb.AppendFormat(" [{0}]", new string(path.Pending.ToArray()));
-            Console.WriteLine(sb);
-        }
+        //private static void Debug(PlayPath path)
+        //{
+        //    var sb = new StringBuilder();
+        //    sb.AppendFormat("{0} {1} {2}", path.Main.First, path.Main.Direction, path.Main.Word);
+        //    if (path.Extras.Count > 0)
+        //        foreach (WordPart extra in path.Extras)
+        //            sb.AppendFormat(" [{0} {1} {2}]", extra.First, extra.Direction, extra.Word);
+        //    sb.AppendFormat(" +{0}", string.Join(string.Empty, (from lp in path.Played select lp.Letter).ToArray()));
+        //    if (path.Pending.Count > 0)
+        //        sb.AppendFormat(" [{0}]", new string(path.Pending.ToArray()));
+        //    Console.WriteLine(sb);
+        //}
         #endregion
         public PlayGraph(WordGraph graph, Board board, Rack rack)
             : this(new CtorHelper(graph, board, rack))
@@ -274,7 +274,7 @@ namespace Ded.Wordox
                         if (valid)
                         {
                             newValids.Add(newPath);
-                            Debug(newPath);
+                            //Debug(newPath);
                         }
                         newPaths.Add(mainPart, newPath);
                     }
@@ -302,10 +302,16 @@ namespace Ded.Wordox
         public bool Wins { get { return score.Other.Wins; } }
         public int Diff { get { return score.Other.Points - score.Current.Points; } }
         public int Points { get { return score.Other.Points; } }
+        public int Stars { get { return score.Other.Stars; } }
+        public bool HasOneFixes { get { return hasOneFixes; } }
+        public bool HasTwoMoreFixes { get { return hasTwoMoreFixes; } }
+        public bool HasFixes { get { return hasOneFixes || hasTwoMoreFixes; } }
         public int CompareTo(PlayInfo other)
         {
             return PlayInfoComparer.Default.Compare(this, other);
         }
+        // TODO REMOVE
+        public Score Score { get { return score; } }
     }
     class PlayInfoComparer : IComparer<PlayInfo>
     {
@@ -314,6 +320,41 @@ namespace Ded.Wordox
         private readonly ScoreStrategy scoreStrategy;
         private readonly WordStrategy wordStrategy;
         #endregion
+        #region Private stuff
+        //private static int Or(int first, int second)
+        //{
+        //    return first != 0 ? first : second;
+        //}
+        private static bool NoVortex(PlayInfo x, PlayInfo y)
+        {
+            return !x.HasVortex && !y.HasVortex;
+        }
+        private static int CompareVortexes(PlayInfo x, PlayInfo y)
+        {
+            return -x.HasVortex.CompareTo(y.HasVortex);
+        }
+        private int CompareWords(PlayInfo x, PlayInfo y)
+        {
+            switch (wordStrategy)
+            {
+                case WordStrategy.None:
+                    return 0;
+                case WordStrategy.NoOneFixes:
+                    if (NoVortex(x, y))
+                        return -x.HasOneFixes.CompareTo(y.HasOneFixes);
+                    return CompareVortexes(x, y);
+                case WordStrategy.NoTwoMoreFixes:
+                    if (NoVortex(x, y))
+                        return -x.HasTwoMoreFixes.CompareTo(y.HasTwoMoreFixes);
+                    return CompareVortexes(x, y);
+                case WordStrategy.NoFixes:
+                    if (NoVortex(x, y))
+                        return -x.HasFixes.CompareTo(y.HasFixes);
+                    return CompareVortexes(x, y);
+                default:
+                    throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Unknown word strategy : {0}", wordStrategy));
+            }
+        }
         private int CompareScores(PlayInfo x, PlayInfo y)
         {
             switch (scoreStrategy)
@@ -328,6 +369,11 @@ namespace Ded.Wordox
                     throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Unknown score strategy : {0}", scoreStrategy));
             }
         }
+        private static int CompareStars(PlayInfo x, PlayInfo y)
+        {
+            return x.Stars.CompareTo(y.Stars);
+        }
+        #endregion
         public PlayInfoComparer(ScoreStrategy scoreStrategy, WordStrategy wordStrategy)
         {
             this.scoreStrategy = scoreStrategy;
@@ -337,12 +383,30 @@ namespace Ded.Wordox
         {
             if (x.Wins ^ y.Wins)
                 return x.Wins ? 1 : -1;
-            int result = CompareScores(x, y);
+            int result = CompareWords(x, y);
+            if (result == 0)
+                result = CompareScores(x, y);
+            if (result == 0)
+                result = CompareStars(x, y);
             return result;
         }
         public static PlayInfoComparer Default
         {
             get { return none.Value; }
+        }
+    }
+    class ReverseComparer<T> : IComparer<T>
+    {
+        #region Fields
+        private readonly IComparer<T> wrapped;
+        #endregion
+        public ReverseComparer(IComparer<T> wrapped)
+        {
+            this.wrapped = wrapped;
+        }
+        public int Compare(T x, T y)
+        {
+            return wrapped.Compare(y, x);
         }
     }
 }

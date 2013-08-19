@@ -59,6 +59,7 @@
     <Compile Include="WordDownloader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="WordGraph.cs" />
+    <Compile Include="Wordox.cs" />
     <Compile Include="WordoxForm.cs" />
   </ItemGroup>
   <ItemGroup>

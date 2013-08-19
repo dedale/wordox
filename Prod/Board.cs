@@ -12,10 +12,12 @@ namespace Ded.Wordox
     [Serializable]
     public class OutOfBoardException : Exception
     {
+        #region Private stuff
         protected OutOfBoardException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
         }
+        #endregion
         public OutOfBoardException()
         {
         }
@@ -307,6 +309,12 @@ namespace Ded.Wordox
             if (word.Length == 0)
                 return null;
             return new WordPart(word, direction == Direction.Bottom ? cell.Bottom : cell.Right, direction);
+        }
+        public void Write()
+        {
+            for (int r = 0; r < Height; r++)
+                for (int c = 0; c < Width; c++)
+                    Console.Write("{0} " + (c == Width - 1 ? "\n" : ""), board[r][c] == Empty ? '.' : board[r][c]);
         }
     }
     class WordPart

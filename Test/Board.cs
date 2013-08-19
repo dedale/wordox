@@ -195,7 +195,7 @@ namespace Ded.Wordox
             var part = new WordPart("LETTRE", new Cell(4, 2), Direction.Right);
             board = board.Play(part);
             score = score.Play(part);
-            var rack = new Rack(new ConstantSet<char>("MOTEUR"));
+            var rack = new Rack("MOTEUR");
             var play = new PlayGraph(graph, board, rack);
             for (int i = 0; i < 5; i++)
                 play = play.Next();
@@ -232,44 +232,6 @@ namespace Ded.Wordox
                 Assert.AreEqual(new WordPart(word, new Cell(4, 4), direction), after);
             else
                 Assert.IsNull(after);
-        }
-    }
-    class AI
-    {
-        #region Fields
-        private readonly WordGraph graph;
-        #endregion
-        #region Private stuff
-        private void FindLongest(string word, HashSet<ValidWord> set, int pending)
-        {
-            if (pending == 0)
-                set.AddRange(Find(word));
-            else
-                for (int i = 0; i < word.Length; i++)
-                    FindLongest(word.Remove(i, 1), set, pending - 1);
-        }
-        #endregion
-        public AI(WordGraph graph)
-        {
-            this.graph = graph;
-        }
-        public ConstantSet<ValidWord> Find(string word)
-        {
-            return graph.GetValids(word);
-        }
-        public ConstantSet<ValidWord> FindLongest(string word)
-        {
-            ConstantSet<ValidWord> found = Find(word);
-            if (found.Count > 0)
-                return found;
-            for (int pending = 1; pending <= word.Length - 2; pending++)
-            {
-                var set = new HashSet<ValidWord>();
-                FindLongest(word, set, pending);
-                if (set.Count > 0)
-                    return set.ToConstant();
-            }
-            return new ConstantSet<ValidWord>();
         }
     }
     [TestFixture]

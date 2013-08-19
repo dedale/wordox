@@ -95,5 +95,9 @@ namespace Ded.Wordox
             var newCurrent = new PlayerScore(other.Points - taken, vortex ? 0 : other.Stars);
             return new Score(newCurrent, newOther);
         }
+        public override string ToString()
+        {
+            return string.Format(CultureInfo.InvariantCulture, "{0} / {1}", current, other);
+        }
     }
 }
