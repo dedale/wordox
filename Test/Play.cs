@@ -138,8 +138,8 @@ namespace Ded.Wordox
                     return first ? -1 : 1;
                 return 0;
             }
-            if (vortex1 ^ vortex2)
-                return vortex1 ? 1 : -1;
+            //if (vortex1 ^ vortex2)
+            //    return vortex1 ? 1 : -1;
             return 0;
         }
         [Test] public void TestCompareWordsNoOneFixes([Values(false, true)] bool vortex1,

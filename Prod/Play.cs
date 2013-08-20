@@ -365,10 +365,10 @@ namespace Ded.Wordox
         {
             return !x.HasVortex && !y.HasVortex;
         }
-        private static int CompareVortexes(PlayInfo x, PlayInfo y)
-        {
-            return x.HasVortex.CompareTo(y.HasVortex);
-        }
+        //private static int CompareVortexes(PlayInfo x, PlayInfo y)
+        //{
+        //    return x.HasVortex.CompareTo(y.HasVortex);
+        //}
         private int CompareWords(PlayInfo x, PlayInfo y)
         {
             switch (wordStrategy)
@@ -378,15 +378,18 @@ namespace Ded.Wordox
                 case WordStrategy.NoOneFixes:
                     if (NoVortex(x, y))
                         return -x.HasOneFixes.CompareTo(y.HasOneFixes);
-                    return CompareVortexes(x, y);
+                    //return CompareVortexes(x, y);
+                    return 0;
                 case WordStrategy.NoTwoMoreFixes:
                     if (NoVortex(x, y))
                         return -x.HasTwoMoreFixes.CompareTo(y.HasTwoMoreFixes);
-                    return CompareVortexes(x, y);
+                    //return CompareVortexes(x, y);
+                    return 0;
                 case WordStrategy.NoFixes:
                     if (NoVortex(x, y))
                         return -x.HasFixes.CompareTo(y.HasFixes);
-                    return CompareVortexes(x, y);
+                    //return CompareVortexes(x, y);
+                    return 0;
                 default:
                     throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Unknown word strategy : {0}", wordStrategy));
             }

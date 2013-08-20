@@ -305,20 +305,11 @@ namespace Ded.Wordox
             }
             return new ConstantSet<ValidWord>();
         }
-        //public Fix GetOneFixes(string word)
-        //{
-        //    WordVertex vertex;
-        //    if (vertices.TryGetValue(word, out vertex))
-        //        return vertex.OneFixes;
-        //    return Fix.None;
-        //}
         public ConstantSet<char> GetLetters(string part, Fix fix)
         {
             WordVertex vertex;
             if (!vertices.TryGetValue(part, out vertex))
                 throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Unknown word part : {0}", part), "part");
-            //if (fix != Fix.Prefix && fix != Fix.Suffix)
-            //    throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Bad fix : {0}", fix), "fix");
             return vertex.GetLetters(fix);
         }
         public bool IsValid(string word)
@@ -359,6 +350,13 @@ namespace Ded.Wordox
         public bool Contains(string part)
         {
             return vertices.ContainsKey(part);
+        }
+        public double GetWeight(string word)
+        {
+            double p = 0;
+            foreach (char c in word)
+                p += counts[c];
+            return p / total;
         }
     }
     class Rack

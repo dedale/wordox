@@ -106,11 +106,17 @@ namespace Ded.Wordox
             foreach (var word in words)
                 Console.WriteLine("{0} 1:{1}", word.Word, word.OneFixes);
 
+            var weighted = new List<Tuple<double, ValidWord>>();
+            foreach (ValidWord valid in words)
+                if (weighted.Count == 0 || validWordComparer.Compare(valid, weighted[weighted.Count - 1].Item2) == 0)
+                    weighted.Add(new Tuple<double, ValidWord>(graph.GetWeight(valid.Word), valid));
+            weighted.Sort((x, y) => x.Item1.CompareTo(y.Item1));
+
             Direction direction = random.Bool ? Direction.Right : Direction.Bottom;
-            ValidWord valid = words[0];
-            var cellFinder = new CellFinder(random, valid, direction);
+            ValidWord selected = weighted[0].Item2;
+            var cellFinder = new CellFinder(random, selected, direction);
             Cell first = cellFinder.Run();
-            return new WordPart(valid.Word, first, direction);
+            return new WordPart(selected.Word, first, direction);
         }
         public Game()
         {
@@ -134,7 +140,6 @@ namespace Ded.Wordox
             board.Write();
 
             while (!score.Other.Wins)
-            //for (int t = 0; t < 4; t++)
             {
                 Console.Write("------------------------------\n");
                 rack = new Rack(graph.GetRandom(new string(letters.ToArray())));
@@ -156,33 +161,49 @@ namespace Ded.Wordox
                     infos.Add(new Tuple<PlayInfo, PlayPath>(info, path));
                 }
                 infos.Sort((x, y) => reverse.Compare(x.Item1, y.Item1));
+                var weighted = new List<Tuple<double, PlayInfo, PlayPath>>();
+                while (weighted.Count < infos.Count)
+                {
+                    Tuple<PlayInfo, PlayPath> tuple = infos[weighted.Count];
+                    if (weighted.Count == 0 || comparer.Compare(tuple.Item1, infos[weighted.Count - 1].Item1) == 0)
+                    {
+                        var word = new string((from lp in tuple.Item2.Played select lp.Letter).ToArray());
+                        weighted.Add(new Tuple<double, PlayInfo, PlayPath>(graph.GetWeight(word), tuple.Item1, tuple.Item2));
+                    }
+                    else
+                        break;
+                }
+                {
+                    var tuple = weighted[random.GetInt(weighted.Count)];
+                    PlayInfo info = tuple.Item2;
+                    PlayPath path = tuple.Item3;
+                    board = board.Play(path.Main);
+                    score = score.Play(path);
+                    Console.WriteLine("score: " + score);
+                    board.Write();
+                    if (info.HasVortex)
+                    {
+                        board = new Board();
+                        letters.Clear();
+                    }
+                    else
+                    {
+                        letters = new List<char>(rack.Letters);
+                        foreach (LetterPlay lp in path.Played)
+                            letters.Remove(lp.Letter);
+                    }
+                }
                 int max = 0;
                 foreach (Tuple<PlayInfo, PlayPath> tuple in infos)
                 {
                     PlayInfo info = tuple.Item1;
                     PlayPath path = tuple.Item2;
                     if (max == 0)
-                    {
                         max = info.Points;
-                        board = board.Play(path.Main);
-                        score = score.Play(path);
-                        Console.WriteLine("score: " + score);
-                        board.Write();
-                        if (info.HasVortex)
-                        {
-                            board = new Board();
-                            letters.Clear();
-                        }
-                        else
-                        {
-                            letters = new List<char>(rack.Letters);
-                            foreach (LetterPlay lp in path.Played)
-                                letters.Remove(lp.Letter);
-                        }
-                    }
                     if (info.Points >= max)
                         Console.WriteLine("word: {0} @ {1} {2} - {3}{4}{5}[{6}] ({7}){8}", path.Main.Word, path.Main.First, path.Main.Direction,
-                                          info.HasFixes ? "fixes " : "", info.HasVortex ? "vortex " : "", info.Points, info.Diff.ToString("+#;-#;0"), info.Stars, info.Wins ? " wins" : "");
+                                          info.HasFixes && !info.HasVortex ? "fixes " : "", info.HasVortex ? "vortex " : "",
+                                          info.Points, info.Diff.ToString("+#;-#;0"), info.Stars, info.Wins ? " wins" : "");
                 }
             }
         }

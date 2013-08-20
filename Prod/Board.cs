@@ -315,7 +315,10 @@ namespace Ded.Wordox
         {
             for (int r = 0; r < Height; r++)
                 for (int c = 0; c < Width; c++)
-                    Console.Write("{0} " + (c == Width - 1 ? "\n" : ""), board[r][c] == Empty ? '.' : board[r][c]);
+                {
+                    var cell = new Cell(r, c);
+                    Console.Write("{0} " + (c == Width - 1 ? "\n" : ""), board[r][c] == Empty ? (cell.IsVortex ? '@' : (cell.IsStar ? '*' : '.')) : board[r][c]);
+                }
         }
     }
     class WordPart
