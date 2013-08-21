@@ -27,30 +27,6 @@ namespace Ded.Wordox
     [TestFixture]
     public class ScoreTest
     {
-        private ConstantList<LetterPlay> GetPlayed(WordPart part, params int[] excluded)
-        {
-            var set = new HashSet<int>(excluded);
-            var played = new List<LetterPlay>();
-            var cell = part.First;
-            for (int i = 0; i < part.Word.Length; i++)
-            {
-                if (!set.Contains(i))
-                    played.Add(new LetterPlay(cell, part.Word[i]));
-                if (i < part.Word.Length - 1)
-                {
-                    switch (part.Direction)
-                    {
-                        case Direction.Bottom:
-                            cell = cell.Bottom;
-                            break;
-                        case Direction.Right:
-                            cell = cell.Right;
-                            break;
-                    }
-                }
-            }
-            return played.ToConstant();
-        }
         [Test] public void TestPlayFirst()
         {
             var score = new Score();
@@ -76,7 +52,7 @@ namespace Ded.Wordox
             var part1 = new WordPart("LETTRE", new Cell(4, 2), Direction.Right);
             var first = score.Play(part1);
             var part2 = new WordPart("MOTEUR", new Cell(1, 8), Direction.Bottom);
-            var played = GetPlayed(part2);
+            var played = LetterPlayTest.GetPlayed(part2);
             var extra = part1.Play(new Cell(4, 8), 'E');
             var play = new PlayPath(part2, new WordPartCollection(extra), played, new ConstantSet<char>());
             var second = first.Play(play);
@@ -89,7 +65,7 @@ namespace Ded.Wordox
             var part1 = new WordPart("ET", new Cell(4, 3), Direction.Right);
             var first = score.Play(part1);
             var part2 = new WordPart("LETTRE", new Cell(4, 2), Direction.Right);
-            var played = GetPlayed(part2, 1, 2);
+            var played = LetterPlayTest.GetPlayed(part2, 1, 2);
             var play = new PlayPath(part2, new WordPartCollection(), played, new ConstantSet<char>());
             var second = first.Play(play);
             Assert.AreEqual(new PlayerScore(0, 0), second.Current);
@@ -101,7 +77,7 @@ namespace Ded.Wordox
             var part1 = new WordPart("LETTRE", new Cell(4, 2), Direction.Right);
             var first = score.Play(part1);
             var part2 = new WordPart("JOUES", new Cell(0, 8), Direction.Bottom);
-            var played = GetPlayed(part2);
+            var played = LetterPlayTest.GetPlayed(part2);
             var extra = part1.Play(new Cell(4, 8), 'S');
             var play = new PlayPath(part2, new WordPartCollection(extra), played.ToConstant(), new ConstantSet<char>());
             var second = first.Play(play);
@@ -117,15 +93,15 @@ namespace Ded.Wordox
             scores.Add(scores[scores.Count - 1].Play(parts[parts.Count - 1]));
             var plays = new List<PlayPath>();
             parts.Add(new WordPart("LETTRE", new Cell(4, 2), Direction.Right));
-            plays.Add(new PlayPath(parts[parts.Count - 1], new WordPartCollection(), GetPlayed(parts[parts.Count - 1], 1, 2), new ConstantSet<char>()));
+            plays.Add(new PlayPath(parts[parts.Count - 1], new WordPartCollection(), LetterPlayTest.GetPlayed(parts[parts.Count - 1], 1, 2), new ConstantSet<char>()));
             scores.Add(scores[scores.Count - 1].Play(plays[plays.Count - 1]));
             parts.Add(new WordPart("LETTRES", new Cell(4, 2), Direction.Right));
-            plays.Add(new PlayPath(parts[parts.Count - 1], new WordPartCollection(), GetPlayed(parts[parts.Count - 1], 0, 1, 2, 3, 4, 5), new ConstantSet<char>()));
+            plays.Add(new PlayPath(parts[parts.Count - 1], new WordPartCollection(), LetterPlayTest.GetPlayed(parts[parts.Count - 1], 0, 1, 2, 3, 4, 5), new ConstantSet<char>()));
             scores.Add(scores[scores.Count - 1].Play(plays[plays.Count - 1]));
             Assert.AreEqual(new PlayerScore(7, 1), scores[scores.Count - 1].Other);
             Assert.AreEqual(new PlayerScore(), scores[scores.Count - 1].Current);
             parts.Add(new WordPart("JOUES", new Cell(0, 8), Direction.Bottom));
-            plays.Add(new PlayPath(parts[parts.Count - 1], new WordPartCollection(), GetPlayed(parts[parts.Count - 1], 4), new ConstantSet<char>()));
+            plays.Add(new PlayPath(parts[parts.Count - 1], new WordPartCollection(), LetterPlayTest.GetPlayed(parts[parts.Count - 1], 4), new ConstantSet<char>()));
             scores.Add(scores[scores.Count - 1].Play(plays[plays.Count - 1]));
             Assert.AreEqual(new PlayerScore(5), scores[scores.Count - 1].Other);
             Assert.AreEqual(new PlayerScore(6), scores[scores.Count - 1].Current);

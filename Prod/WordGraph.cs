@@ -95,14 +95,17 @@ namespace Ded.Wordox
         #region Fields
         private readonly string word;
         private readonly Fix oneFixes;
+        private readonly Fix twoMoreFixes;
         #endregion
-        public ValidWord(string word, Fix oneFixes)
+        public ValidWord(string word, Fix oneFixes, Fix twoMoreFixes = Fix.None)
         {
             this.word = word;
             this.oneFixes = oneFixes;
+            this.twoMoreFixes = twoMoreFixes;
         }
         public string Word { get { return word; } }
         public Fix OneFixes { get { return oneFixes; } }
+        public Fix TwoMoreFixes { get { return twoMoreFixes; } }
         public override string ToString()
         {
             return word;
@@ -221,6 +224,7 @@ namespace Ded.Wordox
             }
             set.Add(word);
         }
+        /*
         internal static bool Select(Fix fixes, Fix allowed)
         {
             switch (fixes)
@@ -237,6 +241,7 @@ namespace Ded.Wordox
                     throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Unknown {0} fixes", fixes), "fixes");
             }
         }
+        */
         internal char GetLetter(double d)
         {
             int value = Convert.ToInt32(d * total);
@@ -291,6 +296,7 @@ namespace Ded.Wordox
             }
             return new ConstantSet<ValidWord>();
         }
+        /*
         public ConstantSet<ValidWord> GetValids(string letters, Fix fixes)
         {
             var sorted = letters.Sort();
@@ -305,6 +311,7 @@ namespace Ded.Wordox
             }
             return new ConstantSet<ValidWord>();
         }
+        */
         public ConstantSet<char> GetLetters(string part, Fix fix)
         {
             WordVertex vertex;

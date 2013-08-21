@@ -200,4 +200,31 @@ namespace Ded.Wordox
             }
         }
     }
+    class LetterPlayTest
+    {
+        internal static ConstantList<LetterPlay> GetPlayed(WordPart part, params int[] excluded)
+        {
+            var set = new HashSet<int>(excluded);
+            var played = new List<LetterPlay>();
+            var cell = part.First;
+            for (int i = 0; i < part.Word.Length; i++)
+            {
+                if (!set.Contains(i))
+                    played.Add(new LetterPlay(cell, part.Word[i]));
+                if (i < part.Word.Length - 1)
+                {
+                    switch (part.Direction)
+                    {
+                        case Direction.Bottom:
+                            cell = cell.Bottom;
+                            break;
+                        case Direction.Right:
+                            cell = cell.Right;
+                            break;
+                    }
+                }
+            }
+            return played.ToConstant();
+        }
+    }
 }
