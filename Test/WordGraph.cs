@@ -200,15 +200,16 @@ namespace Ded.Wordox
         public void TestCompareLengthSameFixes(string first, string second, int expected)
         {
             foreach (WordStrategy strategy in Enum.GetValues(typeof(WordStrategy)))
-                foreach (Fix fix in Enum.GetValues(typeof(Fix)))
-                {
-                    var comparer = new ValidWordComparer(strategy);
-                    var x = new ValidWord(first, fix);
-                    var y = new ValidWord(second, fix);
-                    Assert.AreEqual(expected, comparer.Compare(x, y));
-                    Assert.AreEqual(-expected, comparer.Compare(y, x));
-                    TestSort(comparer, x, y, expected);
-                }
+                foreach (Fix one in Enum.GetValues(typeof(Fix)))
+                    foreach (Fix two in Enum.GetValues(typeof(Fix)))
+                    {
+                        var comparer = new ValidWordComparer(strategy);
+                        var x = new ValidWord(first, one, two);
+                        var y = new ValidWord(second, one, two);
+                        Assert.AreEqual(expected, comparer.Compare(x, y));
+                        Assert.AreEqual(-expected, comparer.Compare(y, x));
+                        TestSort(comparer, x, y, expected);
+                    }
         }
         [CLSCompliant(false)]
         [TestCase("MOT", Fix.None, "MOT", Fix.None, 0)]
@@ -216,12 +217,16 @@ namespace Ded.Wordox
         [TestCase("MOT", Fix.None, "MOTS", Fix.Prefix, 1)]
         public void TestCompareNoOneFixes(string w1, Fix f1, string w2, Fix f2, int expected)
         {
-            var comparer = new ValidWordComparer(WordStrategy.NoOneFixes);
-            var x = new ValidWord(w1, f1);
-            var y = new ValidWord(w2, f2);
-            Assert.AreEqual(expected, comparer.Compare(x, y));
-            Assert.AreEqual(-expected, comparer.Compare(y, x));
-            TestSort(comparer, x, y, expected);
+            foreach (Fix two1 in Enum.GetValues(typeof(Fix)))
+                foreach (Fix two2 in Enum.GetValues(typeof(Fix)))
+                {
+                    var comparer = new ValidWordComparer(WordStrategy.NoOneFixes);
+                    var x = new ValidWord(w1, f1, two1);
+                    var y = new ValidWord(w2, f2, two2);
+                    Assert.AreEqual(expected, comparer.Compare(x, y));
+                    Assert.AreEqual(-expected, comparer.Compare(y, x));
+                    TestSort(comparer, x, y, expected);
+                }
         }
     }
 }

@@ -97,7 +97,7 @@ namespace Ded.Wordox
         private readonly Fix oneFixes;
         private readonly Fix twoMoreFixes;
         #endregion
-        public ValidWord(string word, Fix oneFixes, Fix twoMoreFixes = Fix.None)
+        public ValidWord(string word, Fix oneFixes, Fix twoMoreFixes)
         {
             this.word = word;
             this.oneFixes = oneFixes;
@@ -138,7 +138,7 @@ namespace Ded.Wordox
                 case WordStrategy.NoOneFixes:
                     return -(x.OneFixes != Fix.None).CompareTo(y.OneFixes != Fix.None);
                 case WordStrategy.NoTwoMoreFixes:
-                    return 0;//-(x.TwoMoreFixes != Fix.None).CompareTo(y.TwoMoreFixes != Fix.None);
+                    return -(x.TwoMoreFixes != Fix.None).CompareTo(y.TwoMoreFixes != Fix.None);
                 case WordStrategy.NoFixes:
                     return 0;
                 default:
@@ -283,6 +283,50 @@ namespace Ded.Wordox
         {
             get { return vertices.Values; }
         }
+        private ValidWord GetValid(string word)
+        {
+            Fix one = Fix.None;
+            Fix twoMore = Fix.None;
+            var todo = new List<WordVertex> { vertices[word] };
+            for (int i = 0; i < 2; i++)
+            {
+                var temp = new Dictionary<Fix, List<WordVertex>>();
+                foreach (WordVertex vertex in todo)
+                {
+                    foreach (FixEdge edge in vertex.Edges)
+                    {
+                        List<WordVertex> list;
+                        if (!temp.TryGetValue(edge.Fix, out list))
+                        {
+                            list = new List<WordVertex>();
+                            temp.Add(edge.Fix, list);
+                        }
+                        list.Add(edge.Vertex);
+                    }
+                }
+                todo.Clear();
+                foreach (Fix fix in temp.Keys)
+                {
+                    foreach (WordVertex vertex in temp[fix])
+                    {
+                        todo.Add(vertex);
+                        if (vertex.IsValid)
+                        {
+                            switch (i)
+                            {
+                                case 0:
+                                    one |= fix;
+                                    break;
+                                case 1:
+                                    twoMore |= fix;
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+            return new ValidWord(word, one, twoMore);
+        }
         public ConstantSet<ValidWord> GetValids(string letters)
         {
             var sorted = letters.Sort();
@@ -291,7 +335,7 @@ namespace Ded.Wordox
             {
                 var result = new HashSet<ValidWord>();
                 foreach (var word in set)
-                    result.Add(new ValidWord(word, vertices[word].OneFixes));
+                    result.Add(GetValid(word));
                 return result.ToConstant();
             }
             return new ConstantSet<ValidWord>();

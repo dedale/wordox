@@ -191,10 +191,8 @@ namespace Ded.Wordox
         {
             var graph = WordGraph.French;
             var board = new Board();
-            var score = new Score();
             var part = new WordPart("LETTRE", new Cell(4, 2), Direction.Right);
             board = board.Play(part);
-            score = score.Play(part);
             var rack = new Rack("MOTEUR");
             var play = new PlayGraph(graph, board, rack);
             for (int i = 0; i < 5; i++)

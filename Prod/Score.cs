@@ -74,27 +74,27 @@ namespace Ded.Wordox
         }
         public PlayerScore Current { get { return current; } }
         public PlayerScore Other { get { return other; } }
-        public Score Play(WordPart part)
-        {
-            return new Score(other, PlayerScore.Play(part));
-        }
-        public Score Play(PlayPath path)
-        {
-            int points = path.Played.Count;
-            int stars = 0;
-            bool vortex = false;
-            foreach (LetterPlay lp in path.Played)
-                if (lp.Cell.IsStar)
-                    stars++;
-                else if (lp.Cell.IsVortex)
-                    vortex = true;
-            int taken = path.Main.Word.Length - path.Played.Count;
-            foreach (WordPart extra in path.Extras)
-                taken += extra.Word.Length - 1;
-            var newOther = new PlayerScore(current.Points + points + taken + (vortex ? current.Stars + stars : 0), vortex ? 0 : current.Stars + stars);
-            var newCurrent = new PlayerScore(other.Points - taken, vortex ? 0 : other.Stars);
-            return new Score(newCurrent, newOther);
-        }
+        //public Score Play(WordPart part)
+        //{
+        //    return new Score(other, PlayerScore.Play(part));
+        //}
+        //public Score Play(PlayPath path)
+        //{
+        //    int points = path.Played.Count;
+        //    int stars = 0;
+        //    bool vortex = false;
+        //    foreach (LetterPlay lp in path.Played)
+        //        if (lp.Cell.IsStar)
+        //            stars++;
+        //        else if (lp.Cell.IsVortex)
+        //            vortex = true;
+        //    int taken = path.Main.Word.Length - path.Played.Count;
+        //    foreach (WordPart extra in path.Extras)
+        //        taken += extra.Word.Length - 1;
+        //    var newOther = new PlayerScore(current.Points + points + taken + (vortex ? current.Stars + stars : 0), vortex ? 0 : current.Stars + stars);
+        //    var newCurrent = new PlayerScore(other.Points - taken, vortex ? 0 : other.Stars);
+        //    return new Score(newCurrent, newOther);
+        //}
         public override string ToString()
         {
             return string.Format(CultureInfo.InvariantCulture, "{0} / {1}", current, other);

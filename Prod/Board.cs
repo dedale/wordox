@@ -157,6 +157,12 @@ namespace Ded.Wordox
     delegate void CellUpdatedEventHandler(object sender, CellUpdatedEventArgs args);
     class Board
     {
+        enum Player
+        {
+            None,
+            First,
+            Second
+        }
         #region Constants
         public const int Height = 9;
         public const int Width = Height;
@@ -165,7 +171,10 @@ namespace Ded.Wordox
         #endregion
         #region Fields
         private readonly char[][] board;
+        private readonly Player[][] owner;
         private readonly ConstantSet<Cell> cells;
+        private readonly Player player;
+        private readonly Score score;
         #endregion
         #region Private stuff
         private static char[][] BuildBoard()
@@ -175,10 +184,20 @@ namespace Ded.Wordox
                 array[c] = new char[Width];
             return array;
         }
-        private Board(char[][] board, ConstantSet<Cell> cells)
+        private static Player[][] BuildOwner()
+        {
+            var array = new Player[Height][];
+            for (int c = 0; c < Height; c++)
+                array[c] = new Player[Width];
+            return array;
+        }
+        private Board(char[][] board, Player[][] owner, ConstantSet<Cell> cells, Player player, Score score)
         {
             this.board = board;
+            this.owner = owner;
             this.cells = cells;
+            this.player = player;
+            this.score = score;
         }
         private static bool Contains(ConstantSet<Cell> start, IEnumerable<Cell> played)
         {
@@ -189,9 +208,10 @@ namespace Ded.Wordox
         }
         #endregion
         public Board()
-            : this(BuildBoard(), new ConstantSet<Cell>())
+            : this(BuildBoard(), BuildOwner(), new ConstantSet<Cell>(), Player.First, new Score())
         {
         }
+        public Score Score { get { return score; } }
         // TODO Wrap into dedicated object for Play()
         public event CellUpdatedEventHandler CellUpdated;
         public ConstantSet<Cell> GetStartCells()
@@ -213,7 +233,40 @@ namespace Ded.Wordox
             }
             return result.ToConstant();
         }
+
+        private static ConstantList<LetterPlay> GetPlayed(WordPart part)
+        {
+            var played = new List<LetterPlay>();
+            var cell = part.First;
+            for (int i = 0; i < part.Word.Length; i++)
+            {
+                played.Add(new LetterPlay(cell, part.Word[i]));
+                if (i < part.Word.Length - 1)
+                {
+                    switch (part.Direction)
+                    {
+                        case Direction.Bottom:
+                            cell = cell.Bottom;
+                            break;
+                        case Direction.Right:
+                            cell = cell.Right;
+                            break;
+                    }
+                }
+            }
+            return played.ToConstant();
+        }
+
+
         public Board Play(WordPart part)
+        {
+            return Play(part, GetPlayed(part), new WordPartCollection());
+        }
+        public Board Play(PlayPath path)
+        {
+            return Play(path.Main, path.Played, path.Extras);
+        }
+        public Board Play(WordPart part, IList<LetterPlay> played, WordPartCollection extras)
         {
             var start = new ConstantSet<Cell>(GetStartCells());
             var list = new List<Cell>();
@@ -228,20 +281,66 @@ namespace Ded.Wordox
             if (!Contains(start, list))
                 throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Cannot play {0} at {1}", part.Word, part.First));
             var newBoard = BuildBoard();
+            var newOwner = BuildOwner();
             for (int i = 0; i < Height; i++)
+            {
                 for (int j = 0; j < Width; j++)
+                {
                     newBoard[i][j] = board[i][j];
+                    newOwner[i][j] = owner[i][j];
+                }
+            }
             var newCells = new HashSet<Cell>(cells);
             for (int i = 0; i < part.Word.Length; i++)
             {
                 Cell c = list[i];
                 char letter = part.Word[i];
                 newBoard[c.Row][c.Column] = letter;
+                newOwner[c.Row][c.Column] = player;
                 newCells.Add(c);
                 if (CellUpdated != null)
                     CellUpdated(this, new CellUpdatedEventArgs(c, letter));
             }
-            var result = new Board(newBoard, newCells.ToConstant());
+            var newPlayer = player == Player.First ? Player.Second : Player.First;
+
+            int points = played.Count;
+            int stars = 0;
+            bool vortex = false;
+            foreach (LetterPlay lp in played)
+                if (lp.Cell.IsStar)
+                    stars++;
+                else if (lp.Cell.IsVortex)
+                    vortex = true;
+            int taken = part.Word.Length - played.Count;
+            foreach (WordPart extra in extras)
+            {
+                var cell = extra.First;
+                for (int i = 0; i < extra.Word.Length; i++)
+                {
+                    if (newOwner[cell.Row][cell.Column] != player)
+                    {
+                        newOwner[cell.Row][cell.Column] = newPlayer;
+                        taken++;
+                    }
+                    if (i < extra.Word.Length - 1)
+                    {
+                        switch (extra.Direction)
+                        {
+                            case Direction.Bottom:
+                                cell = cell.Bottom;
+                                break;
+                            case Direction.Right:
+                                cell = cell.Right;
+                                break;
+                        }
+                    }
+                }
+            }
+            var newOther = new PlayerScore(score.Current.Points + points + taken + (vortex ? score.Current.Stars + stars : 0), vortex ? 0 : score.Current.Stars + stars);
+            var newCurrent = new PlayerScore(score.Other.Points - taken, vortex ? 0 : score.Other.Stars);
+            var newScore = new Score(newCurrent, newOther);
+
+            var result = new Board(newBoard, newOwner, newCells.ToConstant(), newPlayer, newScore);
             result.CellUpdated = CellUpdated;
             return result;
         }
@@ -311,6 +410,10 @@ namespace Ded.Wordox
                 return null;
             return new WordPart(word, direction == Direction.Bottom ? cell.Bottom : cell.Right, direction);
         }
+        public Board Clear()
+        {
+            return new Board(BuildBoard(), BuildOwner(), new ConstantSet<Cell>(), player, score);
+        }
         public void Write()
         {
             for (int r = 0; r < Height; r++)
@@ -319,6 +422,7 @@ namespace Ded.Wordox
                     var cell = new Cell(r, c);
                     Console.Write("{0} " + (c == Width - 1 ? "\n" : ""), board[r][c] == Empty ? (cell.IsVortex ? '@' : (cell.IsStar ? '*' : '.')) : board[r][c]);
                 }
+            Console.WriteLine("score: " + score);
         }
     }
     class WordPart
