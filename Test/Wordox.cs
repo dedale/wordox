@@ -198,49 +198,63 @@ namespace Ded.Wordox
                 Console.Write("------------------------------\n");
                 rack = new Rack(graph.GetRandom(new string(letters.ToArray())));
                 Console.WriteLine("rack: " + rack.Value);
-                var chrono = new Chrono();
-                PlayGraph play = GetPlayGraph(board, rack);
-                Console.WriteLine("{0} moves in {1} s", play.Valids.Count, Convert.ToInt32(chrono.Elapsed.TotalSeconds));
-                var infos = new List<Tuple<PlayInfo, PlayPath>>();
-                chrono = new Chrono();
-                Tuple<PlayInfo, PlayPath> best = GetBestPlay(board, play, infos);
-                Console.WriteLine("Analyzed {0} moves in {1} s", play.Valids.Count, Convert.ToInt32(chrono.Elapsed.TotalSeconds));
+
+                if (board.IsEmpty)
                 {
-                    PlayInfo info = best.Item1;
-                    PlayPath path = best.Item2;
-                    Debug(path);
-                    board = board.Play(path);
+                    part = GetFirstWord(rack);
+                    Console.WriteLine("word: {0} @ {1} {2}", part.Word, part.First, part.Direction);
+                    board = board.Play(part);
+                    letters = new List<char>(rack.Letters);
+                    foreach (char c in part.Word)
+                        letters.Remove(c);
                     board.Write();
-                    if (info.HasVortex)
-                    {
-                        board = board.Clear();
-                        letters.Clear();
-                    }
-                    else
-                    {
-                        letters = new List<char>(rack.Letters);
-                        foreach (LetterPlay lp in path.Played)
-                            letters.Remove(lp.Letter);
-                    }
                 }
-                int max = 0;
-                foreach (Tuple<PlayInfo, PlayPath> tuple in infos)
+                else
                 {
-                    PlayInfo info = tuple.Item1;
-                    PlayPath path = tuple.Item2;
-                    if (max == 0)
-                        max = info.Points;
-                    if (info.Points >= max)
-                        Console.WriteLine("word: {0} @ {1} {2} - {3}{4}{5}[{6}] ({7}){8}",
-                                          path.Main.Word,
-                                          path.Main.First,
-                                          path.Main.Direction,
-                                          info.HasFixes && !info.HasVortex ? (info.HasOneFixes ? "1" : "") + (info.HasTwoMoreFixes ? "2+" : "") + "fixes " : "",
-                                          info.HasVortex ? "vortex " : "",
-                                          info.Points,
-                                          info.Diff.ToString("+#;-#;0"),
-                                          info.Stars,
-                                          info.Wins ? " wins" : "");
+                    var chrono = new Chrono();
+                    PlayGraph play = GetPlayGraph(board, rack);
+                    Console.WriteLine("{0} moves in {1} s", play.Valids.Count, Convert.ToInt32(chrono.Elapsed.TotalSeconds));
+                    var infos = new List<Tuple<PlayInfo, PlayPath>>();
+                    chrono = new Chrono();
+                    Tuple<PlayInfo, PlayPath> best = GetBestPlay(board, play, infos);
+                    Console.WriteLine("Analyzed {0} moves in {1} s", play.Valids.Count, Convert.ToInt32(chrono.Elapsed.TotalSeconds));
+                    {
+                        PlayInfo info = best.Item1;
+                        PlayPath path = best.Item2;
+                        Debug(path);
+                        board = board.Play(path);
+                        board.Write();
+                        if (info.HasVortex)
+                        {
+                            board = board.Clear();
+                            letters.Clear();
+                        }
+                        else
+                        {
+                            letters = new List<char>(rack.Letters);
+                            foreach (LetterPlay lp in path.Played)
+                                letters.Remove(lp.Letter);
+                        }
+                    }
+                    int max = 0;
+                    foreach (Tuple<PlayInfo, PlayPath> tuple in infos)
+                    {
+                        PlayInfo info = tuple.Item1;
+                        PlayPath path = tuple.Item2;
+                        if (max == 0)
+                            max = info.Points;
+                        if (info.Points >= max)
+                            Console.WriteLine("word: {0} @ {1} {2} - {3}{4}{5}[{6}] ({7}){8}",
+                                              path.Main.Word,
+                                              path.Main.First,
+                                              path.Main.Direction,
+                                              info.HasFixes && !info.HasVortex ? (info.HasOneFixes ? "1" : "") + (info.HasTwoMoreFixes ? "2+" : "") + "fixes " : "",
+                                              info.HasVortex ? "vortex " : "",
+                                              info.Points,
+                                              info.Diff.ToString("+#;-#;0"),
+                                              info.Stars,
+                                              info.Wins ? " wins" : "");
+                    }
                 }
             }
         }
@@ -320,6 +334,29 @@ namespace Ded.Wordox
                     continue;
                 Assert.IsTrue(info.Item1.HasFixes);
                 Assert.IsTrue(info.Item1.HasTwoMoreFixes);
+            }
+        }
+        [Test] public void TestFixesBug2()
+        {
+            var graph = WordGraph.French;
+            var board = new Board();
+            var rack = new Rack("DELRIC");
+
+            var part1 = new WordPart("DECRI", new Cell(4, 4), Direction.Right);
+            board = board.Play(part1);
+
+            rack = new Rack("LTREIG");
+            PlayGraph play = GetPlayGraph(graph, board, rack);
+            var infos = new List<Tuple<PlayInfo, PlayPath>>();
+            GetBestPlay(graph, board, play, infos);
+            foreach (Tuple<PlayInfo, PlayPath> info in infos)
+            {
+                if ("GILET" != info.Item2.Main.Word
+                    || new Cell(5, 1) != info.Item2.Main.First
+                    || Direction.Right != info.Item2.Main.Direction)
+                    continue;
+                Assert.IsTrue(info.Item1.HasFixes);
+                //Assert.IsTrue(info.Item1.HasTwoMoreFixes);
             }
         }
         [Test] public void TestScoreBug()

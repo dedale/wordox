@@ -165,6 +165,7 @@ namespace Ded.Wordox
         private readonly Dictionary<string, WordVertex> vertices;
         private readonly Dictionary<char, int> counts;
         private readonly Dictionary<char, int> ranges;
+        private readonly Dictionary<string, Fix> twoMoreFixes;
         private readonly Random random;
         private readonly int total;
         #endregion
@@ -224,24 +225,6 @@ namespace Ded.Wordox
             }
             set.Add(word);
         }
-        /*
-        internal static bool Select(Fix fixes, Fix allowed)
-        {
-            switch (fixes)
-            {
-                case Fix.None:
-                    return true;
-                case Fix.Prefix:
-                    return (allowed & Fix.Prefix) == Fix.Prefix;
-                case Fix.Suffix:
-                    return (allowed & Fix.Suffix) == Fix.Suffix;
-                case Fix.All:
-                    return allowed == Fix.All;
-                default:
-                    throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Unknown {0} fixes", fixes), "fixes");
-            }
-        }
-        */
         internal char GetLetter(double d)
         {
             int value = Convert.ToInt32(d * total);
@@ -254,39 +237,13 @@ namespace Ded.Wordox
             }
             return c;
         }
-        #endregion
-        public WordGraph(IEnumerable<string> words)
-        {
-            vertices = new Dictionary<string, WordVertex>();
-            valids = new Dictionary<string, HashSet<string>>();
-            counts = new Dictionary<char, int>();
-            ranges = new Dictionary<char, int>();
-            random = new Random();
-            for (char c = 'A'; c <= 'Z'; c++)
-                counts.Add(c, 0);
-            foreach (string word in words)
-            {
-                GetVertex(word, true);
-                AddValid(word);
-                foreach (char c in word)
-                    counts[c]++;
-            }
-            total = 0;
-            for (char c = 'A'; c <= 'Z'; c++)
-            {
-                ranges.Add(c, total);
-                total += counts[c];
-            }
-        }
-        public int Count { get { return vertices.Count; } }
-        public IEnumerable<WordVertex> Vertices
-        {
-            get { return vertices.Values; }
-        }
         private ValidWord GetValid(string word)
         {
-            Fix one = Fix.None;
-            Fix twoMore = Fix.None;
+            WordVertex vertex = vertices[word];
+            Fix one = vertex.OneFixes;
+            Fix twoMore = twoMoreFixes[word];
+            return new ValidWord(word, one, twoMore);
+            /*
             var todo = new List<WordVertex> { vertices[word] };
             for (int i = 0; i < 2; i++)
             {
@@ -326,6 +283,51 @@ namespace Ded.Wordox
                 }
             }
             return new ValidWord(word, one, twoMore);
+            */
+        }
+        #endregion
+        public WordGraph(IEnumerable<string> words)
+        {
+            vertices = new Dictionary<string, WordVertex>();
+            valids = new Dictionary<string, HashSet<string>>();
+            counts = new Dictionary<char, int>();
+            ranges = new Dictionary<char, int>();
+            twoMoreFixes = new Dictionary<string, Fix>();
+            random = new Random();
+            // TODO foreach (c in Alphabet.Letters)
+            for (char c = 'A'; c <= 'Z'; c++)
+                counts.Add(c, 0);
+            foreach (string word in words)
+            {
+                GetVertex(word, true);
+                AddValid(word);
+                foreach (char c in word)
+                    counts[c]++;
+            }
+            total = 0;
+            for (char c = 'A'; c <= 'Z'; c++)
+            {
+                ranges.Add(c, total);
+                total += counts[c];
+            }
+            foreach (WordVertex vertex in vertices.Values)
+            {
+                Fix one = Fix.None;
+                Fix twoMore = Fix.None;
+                foreach (FixEdge edge in vertex.Edges)
+                {
+                    if (edge.Vertex.IsValid)
+                        one |= edge.Fix;
+                    if ((edge.Vertex.OneFixes & edge.Fix) == edge.Fix)
+                        twoMore |= edge.Fix;
+                }
+                twoMoreFixes.Add(vertex.Word, twoMore);
+            }
+        }
+        public int Count { get { return vertices.Count; } }
+        public IEnumerable<WordVertex> Vertices
+        {
+            get { return vertices.Values; }
         }
         public ConstantSet<ValidWord> GetValids(string letters)
         {
@@ -340,22 +342,6 @@ namespace Ded.Wordox
             }
             return new ConstantSet<ValidWord>();
         }
-        /*
-        public ConstantSet<ValidWord> GetValids(string letters, Fix fixes)
-        {
-            var sorted = letters.Sort();
-            HashSet<string> set;
-            if (valids.TryGetValue(sorted, out set))
-            {
-                var result = new HashSet<ValidWord>();
-                foreach (string word in set)
-                    if (Select(vertices[word].OneFixes, fixes))
-                        result.Add(new ValidWord(word, vertices[word].OneFixes));
-                return result.ToConstant();
-            }
-            return new ConstantSet<ValidWord>();
-        }
-        */
         public ConstantSet<char> GetLetters(string part, Fix fix)
         {
             WordVertex vertex;

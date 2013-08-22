@@ -206,6 +206,28 @@ namespace Ded.Wordox
                     return true;
             return false;
         }
+        private static ConstantList<LetterPlay> GetPlayed(WordPart part)
+        {
+            var played = new List<LetterPlay>();
+            var cell = part.First;
+            for (int i = 0; i < part.Word.Length; i++)
+            {
+                played.Add(new LetterPlay(cell, part.Word[i]));
+                if (i < part.Word.Length - 1)
+                {
+                    switch (part.Direction)
+                    {
+                        case Direction.Bottom:
+                            cell = cell.Bottom;
+                            break;
+                        case Direction.Right:
+                            cell = cell.Right;
+                            break;
+                    }
+                }
+            }
+            return played.ToConstant();
+        }
         #endregion
         public Board()
             : this(BuildBoard(), BuildOwner(), new ConstantSet<Cell>(), Player.First, new Score())
@@ -233,31 +255,6 @@ namespace Ded.Wordox
             }
             return result.ToConstant();
         }
-
-        private static ConstantList<LetterPlay> GetPlayed(WordPart part)
-        {
-            var played = new List<LetterPlay>();
-            var cell = part.First;
-            for (int i = 0; i < part.Word.Length; i++)
-            {
-                played.Add(new LetterPlay(cell, part.Word[i]));
-                if (i < part.Word.Length - 1)
-                {
-                    switch (part.Direction)
-                    {
-                        case Direction.Bottom:
-                            cell = cell.Bottom;
-                            break;
-                        case Direction.Right:
-                            cell = cell.Right;
-                            break;
-                    }
-                }
-            }
-            return played.ToConstant();
-        }
-
-
         public Board Play(WordPart part)
         {
             return Play(part, GetPlayed(part), new WordPartCollection());
@@ -424,6 +421,7 @@ namespace Ded.Wordox
                 }
             Console.WriteLine("score: " + score);
         }
+        public bool IsEmpty { get { return cells.Count == 0; } }
     }
     class WordPart
     {

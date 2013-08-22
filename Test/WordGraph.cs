@@ -74,61 +74,22 @@ namespace Ded.Wordox
             Assert.IsTrue(valids.ContainsKey("ET"));
             Assert.IsTrue(valids.ContainsKey("TE"));
         }
-        /*
-        [TestCase("MER", Fix.None, 0)]
-        [TestCase("MER", Fix.Prefix, 0)]
-        [TestCase("MER", Fix.Suffix, 0)]
-        [TestCase("MER", Fix.All, 1)]
-        [TestCase("AMER", Fix.None, 0)]
-        [TestCase("AMER", Fix.Prefix, 0)]
-        [TestCase("AMER", Fix.Suffix, 1)]
-        [TestCase("AMER", Fix.All, 1)]
-        [TestCase("MERE", Fix.None, 0)]
-        [TestCase("MERE", Fix.Prefix, 1)]
-        [TestCase("MERE", Fix.Suffix, 0)]
-        [TestCase("MERE", Fix.All, 1)]
-        [TestCase("AMERE", Fix.None, 1)]
-        [TestCase("AMERE", Fix.Prefix, 1)]
-        [TestCase("AMERE", Fix.Suffix, 1)]
-        [TestCase("AMERE", Fix.All, 1)]
-        public void TestGetValidsFixes(string word, Fix fixes, int count)
+        [TestCase("MER", Fix.All, Fix.None)]
+        [TestCase("AMER", Fix.Suffix, Fix.None)]
+        [TestCase("MERE", Fix.Prefix, Fix.None)]
+        [TestCase("AMERE", Fix.None, Fix.None)]
+        [TestCase("RA", Fix.None, Fix.Suffix)]
+        [TestCase("MI", Fix.None, Fix.Prefix)]
+        [TestCase("TI", Fix.None, Fix.All)]
+        public void TestGetValids(string word, Fix one, Fix twoMore)
         {
-            var graph = new WordGraph(new[] { "MER", "AMER", "MERE", "AMERE" });
-            var valids = graph.GetValids(word, fixes);
-            Assert.AreEqual(count, valids.Count);
+            var graph = new WordGraph(new[] { "MI", "RA", "TI", "MER", "AMER", "MERE", "RAMI", "TIRE", "YETI", "AMERE" });
+            var valids = graph.GetValids(word).ToList();
+            Assert.AreEqual(1, valids.Count);
+            Assert.AreEqual(word, valids[0].Word);
+            Assert.AreEqual(one, valids[0].OneFixes);
+            Assert.AreEqual(twoMore, valids[0].TwoMoreFixes);
         }
-        */
-        //[TestCase("MER", Fix.All)]
-        //[TestCase("MERE", Fix.Prefix)]
-        //[TestCase("AMER", Fix.Suffix)]
-        //[TestCase("AMERE", Fix.None)]
-        //public void TestGetFixes(string word, Fix fixes)
-        //{
-        //    var graph = new WordGraph(new[] { "MER", "AMER", "MERE", "AMERE" });
-        //    Assert.AreEqual(fixes, graph.GetOneFixes(word));
-        //}
-        /*
-        [TestCase(Fix.None, Fix.None, true)]
-        [TestCase(Fix.None, Fix.Prefix, true)]
-        [TestCase(Fix.None, Fix.Suffix, true)]
-        [TestCase(Fix.None, Fix.All, true)]
-        [TestCase(Fix.Prefix, Fix.None, false)]
-        [TestCase(Fix.Prefix, Fix.Prefix, true)]
-        [TestCase(Fix.Prefix, Fix.Suffix, false)]
-        [TestCase(Fix.Prefix, Fix.All, true)]
-        [TestCase(Fix.Suffix, Fix.None, false)]
-        [TestCase(Fix.Suffix, Fix.Prefix, false)]
-        [TestCase(Fix.Suffix, Fix.Suffix, true)]
-        [TestCase(Fix.Suffix, Fix.All, true)]
-        [TestCase(Fix.All, Fix.None, false)]
-        [TestCase(Fix.All, Fix.Prefix, false)]
-        [TestCase(Fix.All, Fix.Suffix, false)]
-        [TestCase(Fix.All, Fix.All, true)]
-        public void TestSelect(Fix fixes, Fix allowed, bool selected)
-        {
-            Assert.AreEqual(selected, WordGraph.Select(fixes, allowed));
-        }
-        */
         [Test] public void TestGetLetters()
         {
             var graph = WordGraph.French;
