@@ -195,9 +195,7 @@ namespace Ded.Wordox
             board = board.Play(part);
             var rack = new Rack("MOTEUR");
             var play = new PlayGraph(graph, board, rack);
-            for (int i = 0; i < 5; i++)
-                play = play.Next();
-            Assert.AreEqual(701, play.Valids.Count);
+            Assert.AreEqual(560 /*701*/, play.Valids.Count);
         }
         [CLSCompliant(false)]
         [TestCase(4, 3, null, Direction.Right)]

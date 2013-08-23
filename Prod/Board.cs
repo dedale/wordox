@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -177,6 +178,7 @@ namespace Ded.Wordox
         private readonly Score score;
         #endregion
         #region Private stuff
+        [DebuggerStepThrough]
         private static char[][] BuildBoard()
         {
             var array = new char[Height][];
@@ -184,6 +186,7 @@ namespace Ded.Wordox
                 array[c] = new char[Width];
             return array;
         }
+        [DebuggerStepThrough]
         private static Player[][] BuildOwner()
         {
             var array = new Player[Height][];
@@ -287,18 +290,24 @@ namespace Ded.Wordox
                     newOwner[i][j] = owner[i][j];
                 }
             }
+            var newPlayer = player == Player.First ? Player.Second : Player.First;
+            int taken = 0;
             var newCells = new HashSet<Cell>(cells);
             for (int i = 0; i < part.Word.Length; i++)
             {
                 Cell c = list[i];
                 char letter = part.Word[i];
-                newBoard[c.Row][c.Column] = letter;
-                newOwner[c.Row][c.Column] = player;
-                newCells.Add(c);
-                if (CellUpdated != null)
-                    CellUpdated(this, new CellUpdatedEventArgs(c, letter));
+                if (newBoard[c.Row][c.Column] == Empty || newOwner[c.Row][c.Column] != player)
+                {
+                    if (newOwner[c.Row][c.Column] == newPlayer)
+                        taken++;
+                    newBoard[c.Row][c.Column] = letter;
+                    newOwner[c.Row][c.Column] = player;
+                    newCells.Add(c);
+                    if (CellUpdated != null)
+                        CellUpdated(this, new CellUpdatedEventArgs(c, letter));
+                }
             }
-            var newPlayer = player == Player.First ? Player.Second : Player.First;
 
             int points = played.Count;
             int stars = 0;
@@ -308,7 +317,6 @@ namespace Ded.Wordox
                     stars++;
                 else if (lp.Cell.IsVortex)
                     vortex = true;
-            int taken = part.Word.Length - played.Count;
             foreach (WordPart extra in extras)
             {
                 var cell = extra.First;
@@ -316,7 +324,7 @@ namespace Ded.Wordox
                 {
                     if (newOwner[cell.Row][cell.Column] != player)
                     {
-                        newOwner[cell.Row][cell.Column] = newPlayer;
+                        newOwner[cell.Row][cell.Column] = player;
                         taken++;
                     }
                     if (i < extra.Word.Length - 1)

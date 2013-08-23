@@ -7,6 +7,13 @@ using System.Reflection;
 
 namespace Ded.Wordox
 {
+    public class Chrono
+    {
+        #region Fields
+        private readonly DateTime start = DateTime.Now;
+        #endregion
+        public TimeSpan Elapsed { get { return DateTime.Now - start; } }
+    }
     class AssemblyResources
     {
         #region Fields

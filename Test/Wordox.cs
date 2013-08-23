@@ -8,13 +8,6 @@ using System.Threading.Tasks;
 
 namespace Ded.Wordox
 {
-    public class Chrono
-    {
-        #region Fields
-        private readonly DateTime start = DateTime.Now;
-        #endregion
-        public TimeSpan Elapsed { get { return DateTime.Now - start; } }
-    }
     class Game
     {
         #region class RandomValues
@@ -110,7 +103,7 @@ namespace Ded.Wordox
             words.Reverse();
             Console.WriteLine("{0} words", words.Count);
             foreach (var word in words)
-                Console.WriteLine("{0} 1:{1}", word.Word, word.OneFixes);
+                Console.WriteLine("{0} 1:{1} 2+:{2}", word.Word, word.OneFixes, word.TwoMoreFixes);
 
             var weighted = new List<Tuple<double, ValidWord>>();
             foreach (ValidWord valid in words)
@@ -144,10 +137,7 @@ namespace Ded.Wordox
 
         private PlayGraph GetPlayGraph(Board board, Rack rack)
         {
-            var play = new PlayGraph(graph, board, rack);
-            for (int i = 1; i < Rack.Size; i++)
-                play = play.Next();
-            return play;
+            return new PlayGraph(graph, board, rack);
         }
         private Tuple<PlayInfo, PlayPath> GetBestPlay(Board board, PlayGraph play, List<Tuple<PlayInfo, PlayPath>> infos)
         {
@@ -195,6 +185,8 @@ namespace Ded.Wordox
 
             while (!board.Score.Other.Wins)
             {
+                var time = new Chrono();
+
                 Console.Write("------------------------------\n");
                 rack = new Rack(graph.GetRandom(new string(letters.ToArray())));
                 Console.WriteLine("rack: " + rack.Value);
@@ -213,11 +205,14 @@ namespace Ded.Wordox
                 {
                     var chrono = new Chrono();
                     PlayGraph play = GetPlayGraph(board, rack);
-                    Console.WriteLine("{0} moves in {1} s", play.Valids.Count, Convert.ToInt32(chrono.Elapsed.TotalSeconds));
+                    double seconds = .1 * Convert.ToInt32(chrono.Elapsed.TotalSeconds * 10);
+                    Console.WriteLine("{0} moves in {1} s", play.Valids.Count, seconds);
                     var infos = new List<Tuple<PlayInfo, PlayPath>>();
                     chrono = new Chrono();
                     Tuple<PlayInfo, PlayPath> best = GetBestPlay(board, play, infos);
-                    Console.WriteLine("Analyzed {0} moves in {1} s", play.Valids.Count, Convert.ToInt32(chrono.Elapsed.TotalSeconds));
+                    seconds = .1 * Convert.ToInt32(chrono.Elapsed.TotalSeconds * 10);
+                    Console.WriteLine("Analyzed {0} moves in {1} s", play.Valids.Count, seconds);
+                    Console.WriteLine();
                     {
                         PlayInfo info = best.Item1;
                         PlayPath path = best.Item2;
@@ -255,6 +250,9 @@ namespace Ded.Wordox
                                               info.Stars,
                                               info.Wins ? " wins" : "");
                     }
+
+                    if (time.Elapsed.TotalSeconds > 40)
+                        throw new TimeoutException();
                 }
             }
         }
@@ -273,14 +271,6 @@ namespace Ded.Wordox
             }
         }
 
-        
-        private static PlayGraph GetPlayGraph(WordGraph graph, Board board, Rack rack)
-        {
-            var play = new PlayGraph(graph, board, rack);
-            for (int i = 1; i < Rack.Size; i++)
-                play = play.Next();
-            return play;
-        }
         private static Tuple<PlayInfo, PlayPath> GetBestPlay(WordGraph graph, Board board, PlayGraph play, List<Tuple<PlayInfo, PlayPath>> infos)
         {
             var valids = new List<PlayPath>(play.Valids);
@@ -323,7 +313,7 @@ namespace Ded.Wordox
             board = board.Play(part1);
 
             rack = new Rack("SSEEEA");
-            PlayGraph play = GetPlayGraph(graph, board, rack);
+            PlayGraph play = new PlayGraph(graph, board, rack);
             var infos = new List<Tuple<PlayInfo, PlayPath>>();
             GetBestPlay(graph, board, play, infos);
             foreach (Tuple<PlayInfo, PlayPath> info in infos)
@@ -346,7 +336,7 @@ namespace Ded.Wordox
             board = board.Play(part1);
 
             rack = new Rack("LTREIG");
-            PlayGraph play = GetPlayGraph(graph, board, rack);
+            PlayGraph play = new PlayGraph(graph, board, rack);
             var infos = new List<Tuple<PlayInfo, PlayPath>>();
             GetBestPlay(graph, board, play, infos);
             foreach (Tuple<PlayInfo, PlayPath> info in infos)
@@ -359,67 +349,71 @@ namespace Ded.Wordox
                 //Assert.IsTrue(info.Item1.HasTwoMoreFixes);
             }
         }
-        [Test] public void TestScoreBug()
+        private static void TestPlayIgnoreExtra(IList<Tuple<string, string, Cell, Direction>> plays)
         {
             var graph = WordGraph.French;
             var board = new Board();
-            var rack = new Rack("ASSDHS");
+            var rack = new Rack(plays[0].Item1);
 
-            var part1 = new WordPart("DAHS", new Cell(4, 4), Direction.Bottom);
+            var part1 = new WordPart(plays[0].Item2, plays[0].Item3, plays[0].Item4);
             board = board.Play(part1);
 
-            board.Write();
-            Console.WriteLine();
-
-            rack = new Rack("SSEEEA");
-            PlayGraph play = GetPlayGraph(graph, board, rack);
-            var infos = new List<Tuple<PlayInfo, PlayPath>>();
-            GetBestPlay(graph, board, play, infos);
-            foreach (Tuple<PlayInfo, PlayPath> info in infos)
+            for (int i = 1; i < plays.Count; i++)
             {
-                PlayPath path = info.Item2;
-                if ("ES" != path.Main.Word
-                    || new Cell(7, 5) != path.Main.First
-                    || Direction.Bottom != path.Main.Direction)
-                    continue;
-                board = board.Play(path);
-
-                board.Write();
-                Console.WriteLine();
-            }
-
-            rack = new Rack("SEEAIA");
-            play = GetPlayGraph(graph, board, rack);
-            infos.Clear();
-            GetBestPlay(graph, board, play, infos);
-            foreach (Tuple<PlayInfo, PlayPath> info in infos)
-            {
-                PlayPath path = info.Item2;
-                if ("AIES" != path.Main.Word
-                    || new Cell(5, 5) != path.Main.First
-                    || Direction.Bottom != path.Main.Direction)
-                    continue;
-                board = board.Play(path);
-
-                board.Write();
-                Console.WriteLine();
-                
-                Assert.GreaterOrEqual(board.Score.Other.Points, 0);
-                Assert.GreaterOrEqual(board.Score.Current.Points, 0);
+                rack = new Rack(plays[i].Item1);
+                PlayGraph play = new PlayGraph(graph, board, rack);
+                var infos = new List<Tuple<PlayInfo, PlayPath>>();
+                GetBestPlay(graph, board, play, infos);
+                foreach (Tuple<PlayInfo, PlayPath> info in infos)
+                {
+                    PlayPath path = info.Item2;
+                    if (plays[i].Item2 != path.Main.Word
+                        || plays[i].Item3 != path.Main.First
+                        || plays[i].Item4 != path.Main.Direction)
+                        continue;
+                    board = board.Play(path);
+                    if (i == plays.Count - 1)
+                    {
+                        Assert.GreaterOrEqual(board.Score.Other.Points, 0);
+                        Assert.GreaterOrEqual(board.Score.Current.Points, 0);
+                    }
+                }
             }
         }
-        [Test] public void TestFirstFixes()
+        [Test] public void TestPlayIgnoreExtra()
+        {
+            var plays = new List<Tuple<string, string, Cell, Direction>>();
+            plays.Add(new Tuple<string, string, Cell, Direction>("ASSDHS", "DAHS", new Cell(4, 4), Direction.Bottom));
+            plays.Add(new Tuple<string, string, Cell, Direction>("SSEEEA", "ES", new Cell(7, 5), Direction.Bottom));
+            plays.Add(new Tuple<string, string, Cell, Direction>("SEEAIA", "AIES", new Cell(5, 5), Direction.Bottom));
+
+            TestPlayIgnoreExtra(plays);
+        }
+        [Test] public void TestPlayIgnoreExtra2()
+        {
+            var plays = new List<Tuple<string, string, Cell, Direction>>();
+            plays.Add(new Tuple<string, string, Cell, Direction>("LATAEE", "ETALA", new Cell(0, 4), Direction.Bottom));
+            plays.Add(new Tuple<string, string, Cell, Direction>("ESAOIC", "COIS", new Cell(5, 1), Direction.Right));
+            plays.Add(new Tuple<string, string, Cell, Direction>("EAEIES", "AAS", new Cell(4, 3), Direction.Right));
+            plays.Add(new Tuple<string, string, Cell, Direction>("EEIESA", "SAIES", new Cell(0, 5), Direction.Bottom));
+
+            TestPlayIgnoreExtra(plays);
+        }
+        [CLSCompliant(false)]
+        [TestCase("IAOUEF", "FOUIE", Fix.Suffix, Fix.Prefix)]
+        [TestCase("NUIONS", "NUIONS", Fix.None, Fix.Prefix)]
+        public void TestFirstFixes(string letters, string word, Fix one, Fix twoMore)
         {
             var graph = WordGraph.French;
-            var rack = new Rack("IAOUEF");
+            var rack = new Rack(letters);
             var ai = new AI(graph);
             List<ValidWord> words = ai.FindLongest(rack.Value).ToList();
             foreach (ValidWord valid in words)
             {
-                if (valid.Word != "FOUIE")
+                if (valid.Word != word)
                     continue;
-                Assert.AreEqual(Fix.Suffix, valid.OneFixes);
-                Assert.AreEqual(Fix.Prefix, valid.TwoMoreFixes);
+                Assert.AreEqual(one, valid.OneFixes);
+                Assert.AreEqual(twoMore, valid.TwoMoreFixes);
                 break;
             }
         }

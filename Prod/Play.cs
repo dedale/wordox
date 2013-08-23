@@ -103,7 +103,6 @@ namespace Ded.Wordox
             #region Fields
             private readonly WordGraph graph;
             private readonly Board board;
-            private readonly ConstantDictionary<WordPart, PlayPath> paths;
             private readonly ConstantList<PlayPath> valids;
             #endregion
             #region Private stuff
@@ -118,9 +117,9 @@ namespace Ded.Wordox
             {
                 this.graph = graph;
                 this.board = board;
-                var tempPaths = new Dictionary<WordPart, PlayPath>();
-                var tempValids = new List<PlayPath>();
+                var validMap = new Dictionary<WordPart, PlayPath>();
                 var cells = board.GetStartCells();
+                var done = new HashSet<WordPart>();
                 foreach (Cell cell in cells)
                 {
                     foreach (Direction direction in new[] { Direction.Bottom, Direction.Right })
@@ -144,19 +143,27 @@ namespace Ded.Wordox
                             var path = GetPath(mainPart, extraPart, played, pending.ToConstant());
                             if (valid)
                             {
-                                tempValids.Add(path);
+                                //Console.WriteLine("{0} {1} {2}", path.Main.Word, path.Main.First, path.Main.Direction);
+                                if (!validMap.ContainsKey(mainPart))
+                                    validMap.Add(mainPart, path);
                                 //Debug(path);
                             }
-                            tempPaths.Add(mainPart, path);
+
+                            var min = new Dictionary<Direction, HashSet<int>>();
+                            min.Add(Direction.Bottom, new HashSet<int>());
+                            min.Add(Direction.Right, new HashSet<int>());
+                            var max = new Dictionary<Direction, HashSet<int>>();
+                            max.Add(Direction.Bottom, new HashSet<int>());
+                            max.Add(Direction.Right, new HashSet<int>());
+
+                            GetNewPaths(graph, board, path, path, done, validMap, true, min, max);
                         }
                     }
                 }
-                paths = new ConstantDictionary<WordPart, PlayPath>(tempPaths);
-                valids = new ConstantList<PlayPath>(tempValids);
+                valids = new ConstantList<PlayPath>(validMap.Values.ToList());
             }
             public WordGraph Graph { get { return graph; } }
             public Board Board { get { return board; } }
-            public ConstantDictionary<WordPart, PlayPath> Paths { get { return paths; } }
             public ConstantList<PlayPath> Valids { get { return valids; } }
         }
         #endregion
@@ -200,7 +207,7 @@ namespace Ded.Wordox
         }
         #endregion
         #region class Choices
-        private sealed class Choices
+        internal sealed class Choices
         {
             #region Fields
             private readonly Fix fix;
@@ -232,19 +239,17 @@ namespace Ded.Wordox
         #region Fields
         private readonly WordGraph graph;
         private readonly Board board;
-        private readonly ConstantDictionary<WordPart, PlayPath> paths;
         private readonly ConstantList<PlayPath> valids;
         #endregion
         #region Private stuff
-        private PlayGraph(WordGraph graph, Board board, ConstantDictionary<WordPart, PlayPath> paths, ConstantList<PlayPath> valids)
+        private PlayGraph(WordGraph graph, Board board, ConstantList<PlayPath> valids)
         {
             this.graph = graph;
             this.board = board;
-            this.paths = paths;
             this.valids = valids;
         }
         private PlayGraph(CtorHelper init)
-            : this(init.Graph, init.Board, init.Paths, init.Valids)
+            : this(init.Graph, init.Board, init.Valids)
         {
         }
         private static WordPartPair GetBeforeAfter(Board board, Cell cell, Direction direction, WordGraph graph, PlayableLetters choices, WordPart before = null, WordPart after = null)
@@ -278,13 +283,26 @@ namespace Ded.Wordox
             }
             return start;
         }
-        private void GetNewPaths(IDictionary<WordPart, PlayPath> newPaths, IList<PlayPath> newValids, PlayPath path, Choices choices, bool validOnly)
+        internal static void GetNewPaths(WordGraph graph, Board board, PlayPath origin, PlayPath path, ISet<WordPart> done, IDictionary<WordPart, PlayPath> newValids, Choices choices, bool validOnly, Dictionary<Direction, HashSet<int>> min, Dictionary<Direction, HashSet<int>> max)
         {
             foreach (char letter in choices.Letters)
             {
                 WordPart mainPart = choices.Main.Play(choices.Cell, letter);
-                if (newPaths.ContainsKey(mainPart))
+                if (done.Contains(mainPart))
                     continue;
+                if (!validOnly)
+                {
+                    if (choices.Fix == Fix.Prefix)
+                    {
+                        if (min[path.Main.Direction].Contains(0))
+                            break;
+                    }
+                    else if (choices.Fix == Fix.Suffix)
+                    {
+                        if (max[path.Main.Direction].Contains(8))
+                            break;
+                    }
+                }
                 WordPart extraPart = choices.Extra.Play(choices.Cell, letter);
                 if (extraPart != null && (validOnly && !graph.IsValid(extraPart.Word) || !validOnly && !graph.Contains(extraPart.Word)))
                     continue;
@@ -309,21 +327,114 @@ namespace Ded.Wordox
                 bool valid = mainPart.Word.Length == 1 || graph.IsValid(mainPart.Word);
                 var newPath = new PlayPath(mainPart, new WordPartCollection(extras.ToConstant()), played.ToConstant(), pending);
                 if (valid)
-                    newValids.Add(newPath);
-                newPaths.Add(mainPart, newPath);
+                {
+                    //Console.WriteLine("{0} {1} {2}", path.Main.Word, path.Main.First, path.Main.Direction);
+                    if (!newValids.ContainsKey(mainPart))
+                        newValids.Add(mainPart, newPath);
+                }
+                done.Add(mainPart);
+                //newPaths.Add(newPath);
+                //if (!validOnly)
+                {
+                    if (!validOnly && valid)
+                    {
+                        min[mainPart.Direction].Add(mainPart.Direction == Direction.Right ? newPath.Main.First.Column : newPath.Main.First.Row);
+                        max[mainPart.Direction].Add(mainPart.Direction == Direction.Right ? newPath.Main.Last.Column : newPath.Main.Last.Row);
+
+                        if (choices.Fix == Fix.Prefix)
+                        {
+                            if (path.Main.Direction == Direction.Right)
+                            {
+                                if (origin.Main.First.Column - path.Main.First.Column >= 2 || path.Main.First.Column == 0)
+                                    break;
+                            }
+                            else
+                            {
+                                if (origin.Main.First.Row - path.Main.First.Row >= 2 || path.Main.First.Row == 0)
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            if (path.Main.Direction == Direction.Right)
+                            {
+                                if (path.Main.Last.Column - origin.Main.Last.Column >= 2 || path.Main.Last.Column == 8)
+                                    break;
+                            }
+                            else
+                            {
+                                if (path.Main.Last.Row - origin.Main.Last.Row >= 2 || path.Main.Last.Row == 8)
+                                    break;
+                            }
+                        }
+
+                    }
+
+                    GetNewPaths(graph, board, origin, newPath, done, newValids, validOnly, min, max);
+                }
             }
         }
-        private void GetNewPaths(PlayPath path, IDictionary<WordPart, PlayPath> newPaths, IList<PlayPath> newValids, bool validOnly)
+        internal static void GetNewPaths(WordGraph graph, Board board, PlayPath origin, PlayPath path, ISet<WordPart> done, IDictionary<WordPart, PlayPath> newValids, bool validOnly, Dictionary<Direction, HashSet<int>> min, Dictionary<Direction, HashSet<int>> max)
         {
+            if (!validOnly)
+            {
+                //if (min[path.Main.Direction].Contains(0) && max[path.Main.Direction].Contains(8))
+                //    return;
+
+                //Console.WriteLine("{0}{1}", new string('.', path.Main.Direction == Direction.Bottom ? path.Main.First.Row : path.Main.First.Column), path.Main.Word);
+            }
+
+            //if (!validOnly)
+            //    Console.WriteLine("NEW PATH (FIXES) : {0} {1} {2}", path.Main.Word, path.Main.First, path.Main.Direction);
+
             IEnumerable<Tuple<Fix, Cell>> start = GetFixCells(path);
             foreach (Tuple<Fix, Cell> fixCell in start)
             {
                 Fix fix = fixCell.Item1;
                 Cell cell = fixCell.Item2;
+
+                if (fix == Fix.Prefix)
+                {
+                    if (min[path.Main.Direction].Contains(0))
+                        break;
+                }
+                else if (fix == Fix.Suffix)
+                {
+                    if (max[path.Main.Direction].Contains(0))
+                        break;
+                }
+
+                if (fix == Fix.Prefix)
+                {
+                    if (path.Main.Direction == Direction.Right)
+                    {
+                        if (origin.Main.First.Column - path.Main.First.Column >= 2 || path.Main.First.Column == 0)
+                            break;
+                    }
+                    else
+                    {
+                        if (origin.Main.First.Row - path.Main.First.Row >= 2 || path.Main.First.Row == 0)
+                            break;
+                    }
+                }
+                else
+                {
+                    if (path.Main.Direction == Direction.Right)
+                    {
+                        if (path.Main.Last.Column - origin.Main.Last.Column >= 2 || path.Main.Last.Column == 8)
+                            break;
+                    }
+                    else
+                    {
+                        if (path.Main.Last.Row - origin.Main.Last.Row >= 2 || path.Main.Last.Row == 8)
+                            break;
+                    }
+                }
+
                 var choices = new Choices(graph, board, path, fix, cell);
                 if (choices.Letters.Count == 0)
                     continue;
-                GetNewPaths(newPaths, newValids, path, choices, validOnly);
+                GetNewPaths(graph, board, origin, path, done, newValids, choices, validOnly, min, max);
             }
         }
         #endregion
@@ -331,67 +442,60 @@ namespace Ded.Wordox
             : this(new CtorHelper(graph, board, rack))
         {
         }
-        public IEnumerable<PlayPath> Paths
-        {
-            get { return paths.Values; }
-        }
         public ConstantList<PlayPath> Valids { get { return valids; } }
-        public bool Contains(WordPart part)
+        private Tuple<Fix, Fix> GetFixes(WordPart part, WordPart future)
         {
-            return paths.ContainsKey(part);
+            Fix one = Fix.None;
+            Fix twoMore = Fix.None;
+            int before = (part.First.Row - future.First.Row)
+                        + (part.First.Column - future.First.Column);
+            if (before >= 1)
+                one |= Fix.Prefix;
+            if (before >= 2)
+                twoMore |= Fix.Prefix;
+            int after = (future.Last.Row - part.Last.Row)
+                        + (future.Last.Column - part.Last.Column);
+            if (after >= 1)
+                one |= Fix.Suffix;
+            if (after >= 2)
+                twoMore |= Fix.Suffix;
+            return new Tuple<Fix, Fix>(one, twoMore);
         }
-        public PlayGraph Next()
-        {
-            var newPaths = new Dictionary<WordPart, PlayPath>();
-            var newValids = new List<PlayPath>(valids);
-            foreach (PlayPath path in paths.Values)
-                GetNewPaths(path, newPaths, newValids, true);
-            return new PlayGraph(graph, board, newPaths.ToConstant(), newValids.ToConstant());
-        }
-        private Tuple<Fix, Fix> GetFixes(WordPart part, List<PlayPath> allValids)
+        private Tuple<Fix, Fix> GetFixes(WordPart part, IEnumerable<PlayPath> allValids)
         {
             Fix one = Fix.None;
             Fix twoMore = Fix.None;
             foreach (PlayPath future in allValids)
             {
-                int before = (part.First.Row - future.Main.First.Row)
-                            + (part.First.Column - future.Main.First.Column);
-                if (before >= 1)
-                    one |= Fix.Prefix;
-                if (before >= 2)
-                    twoMore |= Fix.Prefix;
-                int after = (future.Main.Last.Row - part.Last.Row)
-                            + (future.Main.Last.Column - part.Last.Column);
-                if (after >= 1)
-                    one |= Fix.Suffix;
-                if (after >= 2)
-                    twoMore |= Fix.Suffix;
+                Tuple<Fix, Fix> tuple = GetFixes(part, future.Main);
+                one |= tuple.Item1;
+                twoMore |= tuple.Item2;
             }
             return new Tuple<Fix, Fix>(one, twoMore);
         }
         public Tuple<Fix, Fix> GetFixes(PlayPath path)
         {
-            var allFound = new Dictionary<WordPart, PlayPath>();
-            var allValids = new List<PlayPath>();
-            var pending = new List<PlayPath> { path };
-            while (pending.Count > 0)
-            {
-                int count = allFound.Count;
-                foreach (PlayPath p in pending)
-                {
-                    var temp = new PlayPath(p.Main, p.Extras, p.Played, null);
-                    GetNewPaths(temp, allFound, allValids, true);
-                }
-                pending.Clear();
-                int i = 0;
-                foreach (KeyValuePair<WordPart, PlayPath> kv in allFound)
-                {
-                    if (i >= count)
-                        pending.Add(kv.Value);
-                    i++;
-                }
-            }
-            return GetFixes(path.Main, allValids);
+            //Console.WriteLine("NEW PATH : {0} {1} {2}", path.Main.Word, path.Main.First, path.Main.Direction);
+
+            var min = new Dictionary<Direction, HashSet<int>>();
+            min.Add(Direction.Bottom, new HashSet<int>());
+            min.Add(Direction.Right, new HashSet<int>());
+            var max = new Dictionary<Direction, HashSet<int>>();
+            max.Add(Direction.Bottom, new HashSet<int>());
+            max.Add(Direction.Right, new HashSet<int>());
+
+            var chrono = new Chrono();
+            var done = new HashSet<WordPart>();
+            var allValids = new Dictionary<WordPart, PlayPath>();
+            var temp = new PlayPath(path.Main, path.Extras, path.Played, null);
+            //Console.Write("{0} {1} {2}: ", path.Main.First, path.Main.Direction, path.Main.Word);
+            GetNewPaths(graph, board, temp, temp, done, allValids, false, min, max);
+            double seconds = Convert.ToInt32(chrono.Elapsed.TotalSeconds * 10) * .1;
+            if (seconds > 0)
+                Console.WriteLine("Analyzed fixes ({0} paths) in {1} s", done.Count, seconds);
+            //else
+            //    Console.Write(Environment.NewLine);
+            return GetFixes(path.Main, allValids.Values);
         }
     }
     class PlayInfo : IComparable<PlayInfo>
