@@ -475,8 +475,6 @@ namespace Ded.Wordox
         }
         public Tuple<Fix, Fix> GetFixes(PlayPath path)
         {
-            //Console.WriteLine("NEW PATH : {0} {1} {2}", path.Main.Word, path.Main.First, path.Main.Direction);
-
             var min = new Dictionary<Direction, HashSet<int>>();
             min.Add(Direction.Bottom, new HashSet<int>());
             min.Add(Direction.Right, new HashSet<int>());
@@ -488,13 +486,10 @@ namespace Ded.Wordox
             var done = new HashSet<WordPart>();
             var allValids = new Dictionary<WordPart, PlayPath>();
             var temp = new PlayPath(path.Main, path.Extras, path.Played, null);
-            //Console.Write("{0} {1} {2}: ", path.Main.First, path.Main.Direction, path.Main.Word);
             GetNewPaths(graph, board, temp, temp, done, allValids, false, min, max);
             double seconds = Convert.ToInt32(chrono.Elapsed.TotalSeconds * 10) * .1;
             if (seconds > 0)
-                Console.WriteLine("Analyzed fixes ({0} paths) in {1} s", done.Count, seconds);
-            //else
-            //    Console.Write(Environment.NewLine);
+                Console.WriteLine("Analyzed {0} fix paths in {1} s", done.Count, seconds);
             return GetFixes(path.Main, allValids.Values);
         }
     }

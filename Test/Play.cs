@@ -11,9 +11,9 @@ namespace Ded.Wordox
     public class PlayInfoTest
     {
         [Test] public void TestCompareToSame([Values(false, true)] bool vortex,
-                                             [Values(19, 20)] int p1,
+                                             [Values(PlayerScore.WinPoints - 2, PlayerScore.WinPoints - 1)] int p1,
                                              [Values(0, 1)] int s1,
-                                             [Values(24, 25)] int p2,
+                                             [Values(PlayerScore.WinPoints - 1, PlayerScore.WinPoints)] int p2,
                                              [Values(0, 1)] int s2,
                                              [Values(false, true)] bool oneFixes,
                                              [Values(false, true)] bool twoMoreFixes)
@@ -24,9 +24,9 @@ namespace Ded.Wordox
         }
         [Test] public void TestCompareToWinsFirst()
         {
-            var wonScore = new Score(new PlayerScore(20), new PlayerScore(25));
+            var wonScore = new Score(new PlayerScore(PlayerScore.WinPoints - 5), new PlayerScore(PlayerScore.WinPoints));
             var won = new PlayInfo(false, wonScore, false, false);
-            var otherScore = new Score(new PlayerScore(20), new PlayerScore(24));
+            var otherScore = new Score(new PlayerScore(PlayerScore.WinPoints - 5), new PlayerScore(PlayerScore.WinPoints - 1));
             var other = new PlayInfo(false, otherScore, false, false);
             Assert.Less(0, won.CompareTo(other));
             Assert.Greater(0, other.CompareTo(won));
@@ -57,9 +57,9 @@ namespace Ded.Wordox
             {
                 foreach (WordStrategy word in Enum.GetValues(typeof(WordStrategy)))
                 {
-                    var wonScore = new Score(new PlayerScore(20), new PlayerScore(25));
+                    var wonScore = new Score(new PlayerScore(PlayerScore.WinPoints - 5), new PlayerScore(PlayerScore.WinPoints));
                     var won = new PlayInfo(vortex1, wonScore, one1, two1);
-                    var otherScore = new Score(new PlayerScore(20), new PlayerScore(24));
+                    var otherScore = new Score(new PlayerScore(PlayerScore.WinPoints - 5), new PlayerScore(PlayerScore.WinPoints - 1));
                     var other = new PlayInfo(vortex2, otherScore, one2, two2);
                     var comparer = new PlayInfoComparer(score, word);
                     Assert.Less(0, comparer.Compare(won, other));
@@ -79,9 +79,9 @@ namespace Ded.Wordox
             {
                 foreach (WordStrategy word in Enum.GetValues(typeof(WordStrategy)))
                 {
-                    var firstScore = new Score(new PlayerScore(20), new PlayerScore(25));
+                    var firstScore = new Score(new PlayerScore(PlayerScore.WinPoints - 5), new PlayerScore(PlayerScore.WinPoints));
                     var first = new PlayInfo(vortex1, firstScore, one1, two1);
-                    var secondScore = new Score(new PlayerScore(19), new PlayerScore(26));
+                    var secondScore = new Score(new PlayerScore(PlayerScore.WinPoints - 6), new PlayerScore(PlayerScore.WinPoints + 1));
                     var second = new PlayInfo(vortex2, secondScore, one2, two2);
                     var comparer = new PlayInfoComparer(score, word);
                     Assert.AreEqual(-1, comparer.Compare(first, second));
@@ -165,8 +165,6 @@ namespace Ded.Wordox
                     return first ? -1 : 1;
                 return 0;
             }
-            //if (vortex1 ^ vortex2)
-            //    return vortex1 ? 1 : -1;
             return 0;
         }
         [Test] public void TestCompareWordsNoOneFixes([Values(false, true)] bool vortex1,

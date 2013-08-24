@@ -7,6 +7,22 @@ using System.Threading.Tasks;
 
 namespace Ded.Wordox
 {
+    class Alphabet
+    {
+        #region Fields
+        private static readonly ConstantList<char> letters = GetLetters();
+        #endregion
+        #region Private stuff
+        private static ConstantList<char> GetLetters()
+        {
+            var list = new List<char>();
+            for (char c = 'A'; c <= 'Z'; c++)
+                list.Add(c);
+            return list.ToConstant();
+        }
+        #endregion
+        public static ConstantList<char> Letters { get { return letters; } }
+    }
     [Flags]
     public enum Fix
     {
@@ -243,47 +259,6 @@ namespace Ded.Wordox
             Fix one = vertex.OneFixes;
             Fix twoMore = twoMoreFixes[word];
             return new ValidWord(word, one, twoMore);
-            /*
-            var todo = new List<WordVertex> { vertices[word] };
-            for (int i = 0; i < 2; i++)
-            {
-                var temp = new Dictionary<Fix, List<WordVertex>>();
-                foreach (WordVertex vertex in todo)
-                {
-                    foreach (FixEdge edge in vertex.Edges)
-                    {
-                        List<WordVertex> list;
-                        if (!temp.TryGetValue(edge.Fix, out list))
-                        {
-                            list = new List<WordVertex>();
-                            temp.Add(edge.Fix, list);
-                        }
-                        list.Add(edge.Vertex);
-                    }
-                }
-                todo.Clear();
-                foreach (Fix fix in temp.Keys)
-                {
-                    foreach (WordVertex vertex in temp[fix])
-                    {
-                        todo.Add(vertex);
-                        if (vertex.IsValid)
-                        {
-                            switch (i)
-                            {
-                                case 0:
-                                    one |= fix;
-                                    break;
-                                case 1:
-                                    twoMore |= fix;
-                                    break;
-                            }
-                        }
-                    }
-                }
-            }
-            return new ValidWord(word, one, twoMore);
-            */
         }
         #endregion
         public WordGraph(IEnumerable<string> words)
@@ -294,8 +269,7 @@ namespace Ded.Wordox
             ranges = new Dictionary<char, int>();
             twoMoreFixes = new Dictionary<string, Fix>();
             random = new Random();
-            // TODO foreach (c in Alphabet.Letters)
-            for (char c = 'A'; c <= 'Z'; c++)
+            foreach (char c in Alphabet.Letters)
                 counts.Add(c, 0);
             foreach (string word in words)
             {
@@ -305,7 +279,7 @@ namespace Ded.Wordox
                     counts[c]++;
             }
             total = 0;
-            for (char c = 'A'; c <= 'Z'; c++)
+            foreach (char c in Alphabet.Letters)
             {
                 ranges.Add(c, total);
                 total += counts[c];

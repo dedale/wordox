@@ -158,12 +158,14 @@ namespace Ded.Wordox
     delegate void CellUpdatedEventHandler(object sender, CellUpdatedEventArgs args);
     class Board
     {
+        #region enum Player
         enum Player
         {
             None,
             First,
             Second
         }
+        #endregion
         #region Constants
         public const int Height = 9;
         public const int Width = Height;

@@ -324,4 +324,22 @@ namespace Ded.Wordox
             return map as ConstantDictionary<K, V> ?? new ConstantDictionary<K, V>(map);
         }
     }
+    class RandomValues
+    {
+        #region Fields
+        private readonly Random random;
+        #endregion
+        public RandomValues()
+        {
+            random = new Random();
+        }
+        public bool Bool
+        {
+            get { return GetInt(2) == 0; }
+        }
+        public int GetInt(int range)
+        {
+            return random.Next() % range;
+        }
+    }
 }

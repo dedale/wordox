@@ -131,20 +131,9 @@ namespace Ded.Wordox
         }
     }
     [TestFixture]
-    public class WordVertexTest
-    {
-        //[Test] public void TestOneFixes()
-        //{
-        //    var graph = new WordGraph(new[] { "MOT", "MOTS", "DEUX", "MER", "AMER", "MERE", "NE", "ANE" });
-        //    Assert.AreEqual(Fix.None, graph.GetOneFixes("MOTS"));
-        //    Assert.AreEqual(Fix.Suffix, graph.GetOneFixes("MOT"));
-        //    Assert.AreEqual(Fix.Prefix, graph.GetOneFixes("NE"));
-        //    Assert.AreEqual(Fix.All, graph.GetOneFixes("MER"));
-        //}
-    }
-    [TestFixture]
     public class ValidWordTest
     {
+        #region Private stuff
         private static void TestSort(ValidWordComparer comparer, ValidWord x, ValidWord y, int expected)
         {
             if (expected != 0)
@@ -156,6 +145,7 @@ namespace Ded.Wordox
                 Assert.IsTrue(ReferenceEquals(expected < 0 ? x : y, list[1]));
             }
         }
+        #endregion
         [TestCase("MOT", "MOTS", -1)]
         [TestCase("MOT", "MOT", 0)]
         public void TestCompareLengthSameFixes(string first, string second, int expected)
