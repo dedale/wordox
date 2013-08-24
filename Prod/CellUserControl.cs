@@ -45,7 +45,7 @@ namespace Ded.Wordox
     public enum Direction
     {
         Right,
-        Bottom
+        Down
     }
     class DirectionChangedEventArgs : EventArgs
     {
@@ -90,7 +90,7 @@ namespace Ded.Wordox
             {
                 case Direction.Right:
                     return "è";
-                case Direction.Bottom:
+                case Direction.Down:
                     return "ê";
                 default:
                     throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Unknown direction : {0}", direction));

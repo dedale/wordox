@@ -61,7 +61,7 @@ namespace Ded.Wordox
             var board = new Board();
             var rack = new Rack("ASSDHS");
 
-            var part1 = new WordPart("DAHS", new Cell(4, 4), Direction.Bottom);
+            var part1 = new WordPart("DAHS", new Cell(4, 4), Direction.Down);
             board = board.Play(part1);
 
             rack = new Rack("SSEEEA");
@@ -72,7 +72,7 @@ namespace Ded.Wordox
             {
                 if ("ES" != move.Item2.Main.Word
                     || new Cell(7, 5) != move.Item2.Main.First
-                    || Direction.Bottom != move.Item2.Main.Direction)
+                    || Direction.Down != move.Item2.Main.Direction)
                     continue;
                 Assert.IsTrue(move.Item1.HasFixes);
                 Assert.IsTrue(move.Item1.HasTwoMoreFixes);
@@ -104,19 +104,19 @@ namespace Ded.Wordox
         [Test] public void TestPlayIgnoreExtra1()
         {
             var plays = new List<Tuple<string, string, Cell, Direction>>();
-            plays.Add(new Tuple<string, string, Cell, Direction>("ASSDHS", "DAHS", new Cell(4, 4), Direction.Bottom));
-            plays.Add(new Tuple<string, string, Cell, Direction>("SSEEEA", "ES", new Cell(7, 5), Direction.Bottom));
-            plays.Add(new Tuple<string, string, Cell, Direction>("SEEAIA", "AIES", new Cell(5, 5), Direction.Bottom));
+            plays.Add(new Tuple<string, string, Cell, Direction>("ASSDHS", "DAHS", new Cell(4, 4), Direction.Down));
+            plays.Add(new Tuple<string, string, Cell, Direction>("SSEEEA", "ES", new Cell(7, 5), Direction.Down));
+            plays.Add(new Tuple<string, string, Cell, Direction>("SEEAIA", "AIES", new Cell(5, 5), Direction.Down));
 
             TestPlayIgnoreExtra(plays);
         }
         [Test] public void TestPlayIgnoreExtra2()
         {
             var plays = new List<Tuple<string, string, Cell, Direction>>();
-            plays.Add(new Tuple<string, string, Cell, Direction>("LATAEE", "ETALA", new Cell(0, 4), Direction.Bottom));
+            plays.Add(new Tuple<string, string, Cell, Direction>("LATAEE", "ETALA", new Cell(0, 4), Direction.Down));
             plays.Add(new Tuple<string, string, Cell, Direction>("ESAOIC", "COIS", new Cell(5, 1), Direction.Right));
             plays.Add(new Tuple<string, string, Cell, Direction>("EAEIES", "AAS", new Cell(4, 3), Direction.Right));
-            plays.Add(new Tuple<string, string, Cell, Direction>("EEIESA", "SAIES", new Cell(0, 5), Direction.Bottom));
+            plays.Add(new Tuple<string, string, Cell, Direction>("EEIESA", "SAIES", new Cell(0, 5), Direction.Down));
 
             TestPlayIgnoreExtra(plays);
         }

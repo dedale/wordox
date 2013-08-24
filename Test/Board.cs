@@ -68,8 +68,8 @@ namespace Ded.Wordox
             {
                 var cell = new Cell(0, col);
                 for (int row = 1; row < Board.Height; row++)
-                    Assert.IsTrue(cell.TryGetNext(Direction.Bottom, out cell));
-                Assert.IsFalse(cell.TryGetNext(Direction.Bottom, out cell));
+                    Assert.IsTrue(cell.TryGetNext(Direction.Down, out cell));
+                Assert.IsFalse(cell.TryGetNext(Direction.Down, out cell));
             }
         }
         [Test] public void TestIsStar()
@@ -132,7 +132,7 @@ namespace Ded.Wordox
         {
             switch (direction)
             {
-                case Direction.Bottom:
+                case Direction.Down:
                     return row + word.Length > Board.Height;
                 case Direction.Right:
                     return column + word.Length > Board.Width;
@@ -144,7 +144,7 @@ namespace Ded.Wordox
         {
             switch (direction)
             {
-                case Direction.Bottom:
+                case Direction.Down:
                     return column == Board.Center
                         && row >= Math.Max(Board.Center - word.Length + 1, 0)
                         && row <= Board.Center + Math.Min(Board.Center - word.Length + 1, 0);
@@ -160,7 +160,7 @@ namespace Ded.Wordox
         [Test] public void TestPlayFirst([Values("ME", "MOT", "MOTS", "MOTTE", "MOTTES")] string word,
                                          [Range(0, Board.Height - 1)] int row,
                                          [Range(0, Board.Height - 1)] int column,
-                                         [Values(Direction.Bottom, Direction.Right)] Direction direction)
+                                         [Values(Direction.Down, Direction.Right)] Direction direction)
         {
             var board = new Board();
             bool outOfBoard = OutOfBoard(word, row, column, direction);
@@ -175,8 +175,8 @@ namespace Ded.Wordox
         }
         [CLSCompliant(false)]
         [TestCase("ME", 4, 4, Direction.Right, 6)]
-        [TestCase("LETTRE", 2, 4, Direction.Bottom, 14)]
-        [TestCase("LETTRE", 3, 4, Direction.Bottom, 13)]
+        [TestCase("LETTRE", 2, 4, Direction.Down, 14)]
+        [TestCase("LETTRE", 3, 4, Direction.Down, 13)]
         [TestCase("LETTRE", 4, 2, Direction.Right, 14)]
         [TestCase("LETTRE", 4, 3, Direction.Right, 13)]
         public void TestGetStartCellsSecond(string word, int row, int column, Direction direction, int count)
@@ -200,8 +200,8 @@ namespace Ded.Wordox
         [CLSCompliant(false)]
         [TestCase(4, 3, null, Direction.Right)]
         [TestCase(4, 7, "MER", Direction.Right)]
-        [TestCase(3, 4, null, Direction.Bottom)]
-        [TestCase(5, 4, "M", Direction.Bottom)]
+        [TestCase(3, 4, null, Direction.Down)]
+        [TestCase(5, 4, "M", Direction.Down)]
         public void TestGetBeforePart(int row, int column, string word, Direction direction)
         {
             var board = new Board();
@@ -216,8 +216,8 @@ namespace Ded.Wordox
         [CLSCompliant(false)]
         [TestCase(4, 3, "MER", Direction.Right)]
         [TestCase(4, 7, null, Direction.Right)]
-        [TestCase(3, 4, "M", Direction.Bottom)]
-        [TestCase(5, 4, null, Direction.Bottom)]
+        [TestCase(3, 4, "M", Direction.Down)]
+        [TestCase(5, 4, null, Direction.Down)]
         public void TestGetAfterPart(int row, int column, string word, Direction direction)
         {
             var board = new Board();
@@ -228,6 +228,20 @@ namespace Ded.Wordox
                 Assert.AreEqual(new WordPart(word, new Cell(4, 4), direction), after);
             else
                 Assert.IsNull(after);
+        }
+        public void TestSkip()
+        {
+            var board = new Board();
+            var part1 = new WordPart("TRICHE", new Cell(4, 0), Direction.Right);
+            board = board.Play(part1);
+            var first = new PlayerScore(6, 1);
+            var second = new PlayerScore();
+            Assert.AreEqual(second, board.Score.Current);
+            Assert.AreEqual(first, board.Score.Other);
+            board = board.Skip();
+            Assert.AreEqual(first, board.Score.Current);
+            Assert.AreEqual(second, board.Score.Other);
+
         }
     }
     [TestFixture]
@@ -259,8 +273,8 @@ namespace Ded.Wordox
         [CLSCompliant(false)]
         [TestCase("MER", Direction.Right, 4, 3, 'A', "AMER", 4, 3)]
         [TestCase("MER", Direction.Right, 4, 7, 'E', "MERE", 4, 4)]
-        [TestCase("MER", Direction.Bottom, 3, 4, 'A', "AMER", 3, 4)]
-        [TestCase("MER", Direction.Bottom, 7, 4, 'E', "MERE", 4, 4)]
+        [TestCase("MER", Direction.Down, 3, 4, 'A', "AMER", 3, 4)]
+        [TestCase("MER", Direction.Down, 7, 4, 'E', "MERE", 4, 4)]
         public void TestPlay(string word, Direction direction, int row, int column, char letter, string newWord, int newRow, int newColumn)
         {
             var part = new WordPart(word, new Cell(4, 4), direction);
@@ -279,7 +293,7 @@ namespace Ded.Wordox
         {
             var part = new WordPart("MER", new Cell(4, 4), Direction.Right);
             Assert.Throws<ArgumentException>(() => part.Merge(new WordPart("RE", new Cell(0, 0), Direction.Right)));
-            Assert.Throws<ArgumentException>(() => part.Merge(new WordPart("RE", new Cell(4, 6), Direction.Bottom)));
+            Assert.Throws<ArgumentException>(() => part.Merge(new WordPart("RE", new Cell(4, 6), Direction.Down)));
             Assert.Throws<ArgumentException>(() => part.Merge(new WordPart("ER", new Cell(4, 6), Direction.Right)));
             var merge = part.Merge(new WordPart("RE", new Cell(4, 6), Direction.Right));
             Assert.AreEqual(part.First, merge.First);

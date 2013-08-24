@@ -24,32 +24,39 @@ namespace Ded.Wordox
                 foreach (LetterPlay lp in path.Played)
                     vortex |= lp.Cell.IsVortex;
                 Tuple<Fix, Fix> oneTwoFixes = play.GetFixes(path);
-                var info = new PlayInfo(vortex, board.Play(path).Score, oneTwoFixes.Item1 != Fix.None, oneTwoFixes.Item2 != Fix.None);
+                var info = new PlayInfo(vortex, board.Play(path).Score, oneTwoFixes.Item1, oneTwoFixes.Item2);
                 infos.Add(new Tuple<PlayInfo, PlayPath>(info, path));
             }
             return infos;
         }
-        private static void WriteMoves(IEnumerable<Tuple<PlayInfo, PlayPath>> infos, IComparer<PlayInfo> comparer)
+        private static void WriteMoves(IComparer<PlayInfo> comparer, IEnumerable<Tuple<double, PlayInfo, PlayPath>> moves)
         {
-            Tuple<PlayInfo, PlayPath> previous = null;
-            foreach (Tuple<PlayInfo, PlayPath> tuple in infos)
+            Console.WriteLine(comparer);
+            foreach (Tuple<double, PlayInfo, PlayPath> tuple in moves)
             {
-                if (previous != null && comparer.Compare(previous.Item1, tuple.Item1) != 0)
-                    break;
-                PlayInfo info = tuple.Item1;
-                PlayPath path = tuple.Item2;
-                Console.WriteLine("word: {0} @ {1} {2} - {3}{4}{5}[{6}] ({7}){8}",
-                                  path.Main.Word,
-                                  path.Main.First,
-                                  path.Main.Direction,
+                double weight = tuple.Item1;
+                PlayInfo info = tuple.Item2;
+                PlayPath path = tuple.Item3;
+                Console.WriteLine("{0} word: {1} - {2}{3}{4}[{5}] ({6}){7}",
+                                  weight.ToString("0.###", CultureInfo.InvariantCulture),
+                                  path.Main,
                                   info.HasFixes && !info.HasVortex ? (info.HasOneFixes ? "1" : "") + (info.HasTwoMoreFixes ? "2+" : "") + "fixes " : "",
                                   info.HasVortex ? "vortex " : "",
                                   info.Points,
                                   info.Diff.ToString("+#;-#;0", CultureInfo.InvariantCulture),
                                   info.Stars,
                                   info.Wins ? " wins" : "");
-                previous = tuple;
             }
+            Console.WriteLine();
+        }
+        private static bool Ignore(List<Tuple<double, PlayInfo, PlayPath>> weighted, List<Tuple<double, PlayInfo, PlayPath>> previous)
+        {
+            if (weighted.Count != previous.Count)
+                return false;
+            for (int i = 0; i < weighted.Count; i++)
+                if (weighted[i].Item3 != previous[i].Item3)
+                    return false;
+            return true;
         }
         #endregion
         public MoveFinder(WordGraph graph, Board board, PlayGraph play)
@@ -65,30 +72,38 @@ namespace Ded.Wordox
             comparers.Add(new PlayInfoComparer(ScoreStrategy.MaxDiff, WordStrategy.NoOneFixes));
             comparers.Add(new PlayInfoComparer(ScoreStrategy.MaxDiff, WordStrategy.None));
 
-            List<Tuple<PlayInfo, PlayPath>> moves = GetAllMoves();
+            var moves = Progress.Wait<List<Tuple<PlayInfo, PlayPath>>>(GetAllMoves);
 
+            Console.WriteLine();
+
+            var previous = new List<Tuple<double, PlayInfo, PlayPath>>();
+            var weighted = new List<Tuple<double, PlayInfo, PlayPath>>();
             for (int i = comparers.Count - 1; i >= 0; i--)
             {
                 var reverse = new ReverseComparer<PlayInfo>(comparers[i]);
                 moves.Sort((x, y) => reverse.Compare(x.Item1, y.Item1));
-                WriteMoves(moves, reverse);
-            }
 
-            IComparer<PlayInfo> comparer = comparers[0];
-
-            var weighted = new List<Tuple<double, PlayInfo, PlayPath>>();
-            while (weighted.Count < moves.Count)
-            {
-                Tuple<PlayInfo, PlayPath> tuple = moves[weighted.Count];
-                if (weighted.Count == 0 || comparer.Compare(tuple.Item1, moves[weighted.Count - 1].Item1) == 0)
+                while (weighted.Count < moves.Count)
                 {
-                    var word = new string((from lp in tuple.Item2.Played select lp.Letter).ToArray());
-                    weighted.Add(new Tuple<double, PlayInfo, PlayPath>(graph.GetWeight(word), tuple.Item1, tuple.Item2));
+                    Tuple<PlayInfo, PlayPath> tuple = moves[weighted.Count];
+                    if (weighted.Count == 0 || reverse.Compare(tuple.Item1, moves[weighted.Count - 1].Item1) == 0)
+                    {
+                        var word = new string((from lp in tuple.Item2.Played select lp.Letter).ToArray());
+                        weighted.Add(new Tuple<double, PlayInfo, PlayPath>(graph.GetWeight(word), tuple.Item1, tuple.Item2));
+                    }
+                    else
+                        break;
                 }
-                else
-                    break;
+                weighted.Sort((x, y) => x.Item1.CompareTo(y.Item1));
+
+                if (!Ignore(weighted, previous))
+                    WriteMoves(comparers[i], weighted);
+
+                previous.Clear();
+                previous.AddRange(weighted);
+                if (i > 0)
+                    weighted.Clear();
             }
-            weighted.Sort((x, y) => x.Item1.CompareTo(y.Item1));
             return new Tuple<PlayInfo, PlayPath>(weighted[0].Item2, weighted[0].Item3);
         }
     }
@@ -107,11 +122,11 @@ namespace Ded.Wordox
             {
                 Cell first = new Cell(Board.Center, Board.Center);
                 if (valid.Word.Length == 6)
-                    first = direction == Direction.Right ? first.Left : first.Top;
+                    first = direction == Direction.Right ? first.Left : first.Up;
                 int range = valid.Word.Length == 6 ? 3 : valid.Word.Length - 1;
                 int d = valid.Word.Length >= 5 ? random.GetInt(2) * range : random.GetInt(range);
                 for (int i = 0; i < d; i++)
-                    first = direction == Direction.Right ? first.Left : first.Top;
+                    first = direction == Direction.Right ? first.Left : first.Up;
                 return first;
             }
             private Cell GetPrefixCell()
@@ -159,16 +174,19 @@ namespace Ded.Wordox
         private readonly WordGraph graph;
         #endregion
         #region Private stuff
-        private WordPart GetFirstWord(Rack rack)
+        internal WordPart GetFirstWord(Rack rack)
         {
             var ai = new AI(graph);
             List<ValidWord> words = ai.FindLongest(rack.Value).ToList();
             var validWordComparer = new ValidWordComparer(WordStrategy.NoOneFixes);
             words.Sort(validWordComparer);
             words.Reverse();
-            Console.WriteLine("{0} words", words.Count);
-            foreach (var word in words)
-                Console.WriteLine("{0} 1:{1} 2+:{2}", word.Word, word.OneFixes, word.TwoMoreFixes);
+            Console.WriteLine("{0} word{1}", words.Count, words.Count > 1 ? "s" : "");
+            for (int i = 0; i < words.Count; i++)
+            {
+                ValidWord word = words[i];
+                Console.WriteLine("{0}> {1} 1:{2} 2+:{3}", i + 1, word.Word, word.OneFixes, word.TwoMoreFixes);
+            }
 
             var weighted = new List<Tuple<double, ValidWord>>();
             foreach (ValidWord valid in words)
@@ -176,23 +194,11 @@ namespace Ded.Wordox
                     weighted.Add(new Tuple<double, ValidWord>(graph.GetWeight(valid.Word), valid));
             weighted.Sort((x, y) => x.Item1.CompareTo(y.Item1));
 
-            Direction direction = random.Bool ? Direction.Right : Direction.Bottom;
+            Direction direction = random.Bool ? Direction.Right : Direction.Down;
             ValidWord selected = weighted[0].Item2;
             var cellFinder = new CellFinder(random, selected, direction);
             Cell first = cellFinder.Run();
             return new WordPart(selected.Word, first, direction);
-        }
-        private static void Debug(PlayPath path)
-        {
-            var sb = new StringBuilder();
-            sb.AppendFormat("{0} {1} {2}", path.Main.First, path.Main.Direction, path.Main.Word);
-            if (path.Extras.Count > 0)
-                foreach (WordPart extra in path.Extras)
-                    sb.AppendFormat(" [{0} {1} {2}]", extra.First, extra.Direction, extra.Word);
-            sb.AppendFormat(" +{0}", string.Join(string.Empty, (from lp in path.Played select lp.Letter).ToArray()));
-            if (path.Pending.Count > 0)
-                sb.AppendFormat(" [{0}]", new string(path.Pending.ToArray()));
-            Console.WriteLine(sb);
         }
         private PlayGraph GetPlayGraph(Board board, Rack rack)
         {
@@ -200,9 +206,13 @@ namespace Ded.Wordox
         }
         #endregion
         public Game()
+            : this(new RandomValues(), WordGraph.French)
         {
-            random = new RandomValues();
-            graph = WordGraph.French;
+        }
+        public Game(RandomValues random, WordGraph graph)
+        {
+            this.random = random;
+            this.graph = graph;
         }
         public void Play()
         {
@@ -210,7 +220,7 @@ namespace Ded.Wordox
             var rack = new Rack(graph.GetRandom());
             Console.WriteLine("rack: " + rack.Value);
             WordPart part = GetFirstWord(rack);
-            Console.WriteLine("word: {0} @ {1} {2}", part.Word, part.First, part.Direction);
+            Console.WriteLine("word: {0}", part);
             board = board.Play(part);
             var letters = new List<char>(rack.Letters);
             foreach (char c in part.Word)
@@ -228,7 +238,7 @@ namespace Ded.Wordox
                 if (board.IsEmpty)
                 {
                     part = GetFirstWord(rack);
-                    Console.WriteLine("word: {0} @ {1} {2}", part.Word, part.First, part.Direction);
+                    Console.WriteLine("word: {0}", part);
                     board = board.Play(part);
                     letters = new List<char>(rack.Letters);
                     foreach (char c in part.Word)
@@ -250,7 +260,7 @@ namespace Ded.Wordox
                     {
                         PlayInfo info = best.Item1;
                         PlayPath path = best.Item2;
-                        Debug(path);
+                        path.Write();
                         board = board.Play(path);
                         board.Write();
                         if (info.HasVortex)

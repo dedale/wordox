@@ -311,6 +311,10 @@ namespace Ded.Wordox
             letters.Sort();
             return new string(letters.ToArray());
         }
+        public static bool Contains(this string s, string value, StringComparison comparison)
+        {
+            return s.IndexOf(value, comparison) > -1;
+        }
     }
     static class IDictionaryExtensions
     {

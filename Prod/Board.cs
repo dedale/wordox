@@ -46,7 +46,7 @@ namespace Ded.Wordox
         {
             switch (direction)
             {
-                case Direction.Bottom:
+                case Direction.Down:
                     if (row == Board.Height - 1)
                         return null;
                     return new Cell(row + 1, column);
@@ -98,8 +98,8 @@ namespace Ded.Wordox
         }
         public Cell Left { get { return new Cell(row, column - 1); } }
         public Cell Right { get { return new Cell(row, column + 1); } }
-        public Cell Top { get { return new Cell(row - 1, column); } }
-        public Cell Bottom { get { return new Cell(row + 1, column); } }
+        public Cell Up { get { return new Cell(row - 1, column); } }
+        public Cell Down { get { return new Cell(row + 1, column); } }
         public bool HasTop { get { return row > 0; } }
         public bool HasBottom { get { return row < Board.Height - 1; } }
         public bool HasLeft { get { return column > 0; } }
@@ -156,14 +156,54 @@ namespace Ded.Wordox
         public char Letter { get { return letter; } }
     }
     delegate void CellUpdatedEventHandler(object sender, CellUpdatedEventArgs args);
+    class DisposableColor : IDisposable
+    {
+        #region Fields
+        private readonly ConsoleColor old;
+        #endregion
+        #region Private stuff
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+                Console.ForegroundColor = old;
+        }
+        #endregion
+        public DisposableColor(ConsoleColor color)
+        {
+            old = Console.ForegroundColor;
+            Console.ForegroundColor = color;
+        }
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+    }
     class Board
     {
-        #region enum Player
-        enum Player
+        #region class ColoredCell
+        private sealed class ColoredCell : IDisposable
         {
-            None,
-            First,
-            Second
+            #region Fields
+            private readonly DisposableColor color;
+            #endregion
+            #region Private stuff
+            private void Dispose(bool disposing)
+            {
+                if (disposing && color != null)
+                    color.Dispose();
+            }
+            #endregion
+            public ColoredCell(char c, ConsoleColor color)
+            {
+                if (c != Empty)
+                    this.color = new DisposableColor(color);
+            }
+            public void Dispose()
+            {
+                Dispose(true);
+                GC.SuppressFinalize(this);
+            }
         }
         #endregion
         #region Constants
@@ -211,28 +251,6 @@ namespace Ded.Wordox
                     return true;
             return false;
         }
-        private static ConstantList<LetterPlay> GetPlayed(WordPart part)
-        {
-            var played = new List<LetterPlay>();
-            var cell = part.First;
-            for (int i = 0; i < part.Word.Length; i++)
-            {
-                played.Add(new LetterPlay(cell, part.Word[i]));
-                if (i < part.Word.Length - 1)
-                {
-                    switch (part.Direction)
-                    {
-                        case Direction.Bottom:
-                            cell = cell.Bottom;
-                            break;
-                        case Direction.Right:
-                            cell = cell.Right;
-                            break;
-                    }
-                }
-            }
-            return played.ToConstant();
-        }
         #endregion
         public Board()
             : this(BuildBoard(), BuildOwner(), new ConstantSet<Cell>(), Player.First, new Score())
@@ -262,7 +280,7 @@ namespace Ded.Wordox
         }
         public Board Play(WordPart part)
         {
-            return Play(part, GetPlayed(part), new WordPartCollection());
+            return Play(part, part.GetPlayed(), new WordPartCollection());
         }
         public Board Play(PlayPath path)
         {
@@ -333,8 +351,8 @@ namespace Ded.Wordox
                     {
                         switch (extra.Direction)
                         {
-                            case Direction.Bottom:
-                                cell = cell.Bottom;
+                            case Direction.Down:
+                                cell = cell.Down;
                                 break;
                             case Direction.Right:
                                 cell = cell.Right;
@@ -357,15 +375,15 @@ namespace Ded.Wordox
             var before = cell;
             switch (direction)
             {
-                case Direction.Bottom:
+                case Direction.Down:
                     while (before.HasTop)
                     {
-                        var top = before.Top;
-                        char prefix = board[top.Row][top.Column];
+                        var up = before.Up;
+                        char prefix = board[up.Row][up.Column];
                         if (prefix == Empty)
                             break;
                         word = prefix + word;
-                        before = top;
+                        before = up;
                     }
                     break;
                 case Direction.Right:
@@ -390,15 +408,15 @@ namespace Ded.Wordox
             var after = cell;
             switch (direction)
             {
-                case Direction.Bottom:
+                case Direction.Down:
                     while (after.HasBottom)
                     {
-                        var bottom = after.Bottom;
-                        char suffix = board[bottom.Row][bottom.Column];
+                        var down = after.Down;
+                        char suffix = board[down.Row][down.Column];
                         if (suffix == Empty)
                             break;
                         word += suffix;
-                        after = bottom;
+                        after = down;
                     }
                     break;
                 case Direction.Right:
@@ -415,7 +433,7 @@ namespace Ded.Wordox
             }
             if (word.Length == 0)
                 return null;
-            return new WordPart(word, direction == Direction.Bottom ? cell.Bottom : cell.Right, direction);
+            return new WordPart(word, direction == Direction.Down ? cell.Down : cell.Right, direction);
         }
         public Board Clear()
         {
@@ -423,17 +441,58 @@ namespace Ded.Wordox
         }
         public void Write()
         {
+            Console.Write("  ");
+            using (new DisposableColor(ConsoleColor.White))
+                for (int c = 0; c < Width; c++)
+                    Console.Write("{0} ", c);
+            Console.WriteLine();
             for (int r = 0; r < Height; r++)
+            {
+                using (new DisposableColor(ConsoleColor.White))
+                    Console.Write("{0} ", r);
                 for (int c = 0; c < Width; c++)
                 {
                     var cell = new Cell(r, c);
-                    Console.Write("{0} " + (c == Width - 1 ? "\n" : ""), board[r][c] == Empty ? (cell.IsVortex ? '@' : (cell.IsStar ? '*' : '.')) : board[r][c]);
+                    using (new ColoredCell(board[r][c], PlayerScore.GetColor(owner[r][c])))
+                        Console.Write("{0} " + (c == Width - 1 ? "\n" : ""), board[r][c] == Empty ? (cell.IsVortex ? '@' : (cell.IsStar ? '*' : '.')) : board[r][c]);
                 }
-            Console.WriteLine("score: " + score);
+            }
+            using (new DisposableColor(ConsoleColor.White))
+                Console.Write("score: ");
+            score.Write(player);
+            Console.WriteLine();
         }
         public bool IsEmpty { get { return cells.Count == 0; } }
+        public Player Current { get { return player; } }
+        public Player Other { get { return player == Player.First ? Player.Second : Player.First; } }
+        public ISet<Cell> GetExcluded(WordPart part)
+        {
+            var excluded = new HashSet<Cell>();
+            var cell = part.First;
+            for (int i = 0; i < part.Word.Length; i++)
+            {
+                if (board[cell.Row][cell.Column] != Empty)
+                    excluded.Add(cell);
+                if (i == part.Word.Length - 1)
+                    break;
+                switch (part.Direction)
+                {
+                    case Direction.Down:
+                        cell = cell.Down;
+                        break;
+                    case Direction.Right:
+                        cell = cell.Right;
+                        break;
+                }
+            }
+            return excluded;
+        }
+        public Board Skip()
+        {
+            return new Board(board, owner, cells, Other, score.Skip());
+        }
     }
-    class WordPart
+    class WordPart : IEquatable<WordPart>
     {
         #region Fields
         private readonly string word;
@@ -447,7 +506,7 @@ namespace Ded.Wordox
             this.first = first;
             this.direction = direction;
             int d = word.Length - 1;
-            int dr = direction == Direction.Bottom ? d : 0;
+            int dr = direction == Direction.Down ? d : 0;
             int dc = direction == Direction.Right ? d : 0;
             last = new Cell(first.Row + dr, first.Column + dc);
         }
@@ -465,10 +524,10 @@ namespace Ded.Wordox
                     if (last.HasRight && last.Right == played)
                         return new WordPart(word + letter, first, direction);
                     break;
-                case Direction.Bottom:
-                    if (first.HasTop && first.Top == played)
+                case Direction.Down:
+                    if (first.HasTop && first.Up == played)
                         return new WordPart(letter + word, played, direction);
-                    if (last.HasBottom && last.Bottom == played)
+                    if (last.HasBottom && last.Down == played)
                         return new WordPart(word + letter, first, direction);
                     break;
                 default:
@@ -484,10 +543,7 @@ namespace Ded.Wordox
         {
             if (ReferenceEquals(obj, this))
                 return true;
-            var other = obj as WordPart;
-            if (other == null)
-                return false;
-            return word == other.word && first == other.first && direction == other.direction;
+            return Equals(obj as WordPart);
         }
         public WordPart Merge(WordPart other)
         {
@@ -498,6 +554,52 @@ namespace Ded.Wordox
             if (word[word.Length - 1] != other.word[0])
                 throw new ArgumentException("Letter mismatch", "other");
             return new WordPart(word + other.Word.Substring(1), first, direction);
+        }
+        public override string ToString()
+        {
+            return string.Format(CultureInfo.InvariantCulture, "{0} {1} {2}", word, first, direction);
+        }
+        public ConstantList<LetterPlay> GetPlayed()
+        {
+            return GetPlayed(new HashSet<Cell>());
+        }
+        public ConstantList<LetterPlay> GetPlayed(ISet<Cell> excluded)
+        {
+            var played = new List<LetterPlay>();
+            var cell = first;
+            for (int i = 0; i < word.Length; i++)
+            {
+                if (!excluded.Contains(cell))
+                    played.Add(new LetterPlay(cell, word[i]));
+                if (i == word.Length - 1)
+                    break;
+                switch (direction)
+                {
+                    case Direction.Down:
+                        cell = cell.Down;
+                        break;
+                    case Direction.Right:
+                        cell = cell.Right;
+                        break;
+                }
+            }
+            return played.ToConstant();
+        }
+        public bool Equals(WordPart other)
+        {
+            if (ReferenceEquals(other, null))
+                return false;
+            return word == other.word && first == other.first && direction == other.direction;
+        }
+        public static bool operator==(WordPart p1, WordPart p2)
+        {
+            if (ReferenceEquals(p1, null))
+                return ReferenceEquals(p2, null);
+            return p1.Equals(p2);
+        }
+        public static bool operator !=(WordPart p1, WordPart p2)
+        {
+            return !(p1 == p2);
         }
     }
     class WordPartCollection : IEnumerable<WordPart>

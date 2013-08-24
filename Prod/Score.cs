@@ -7,6 +7,12 @@ using System.Threading.Tasks;
 
 namespace Ded.Wordox
 {
+    enum Player
+    {
+        None,
+        First,
+        Second
+    }
     class PlayerScore : IEquatable<PlayerScore>
     {
         public const int WinPoints = 25;
@@ -31,7 +37,7 @@ namespace Ded.Wordox
                     stars++;
                 if (i == part.Word.Length - 1)
                     break;
-                cell = part.Direction == Direction.Right ? cell.Right : cell.Bottom;
+                cell = part.Direction == Direction.Right ? cell.Right : cell.Down;
             }
             return new PlayerScore(part.Word.Length, stars);
         }
@@ -53,9 +59,21 @@ namespace Ded.Wordox
         }
         public override string ToString()
         {
-            return string.Format(CultureInfo.InvariantCulture, "{0} ({1})", points, stars);
+            return string.Format(CultureInfo.InvariantCulture, "{0} {1}", points, new string('*', stars));
         }
         public bool Wins { get { return points >= WinPoints; } }
+        public static ConsoleColor GetColor(Player player)
+        {
+            switch (player)
+            {
+                case Player.First:
+                    return ConsoleColor.Blue;
+                case Player.Second:
+                    return ConsoleColor.Magenta;
+                default:
+                    return Console.ForegroundColor;
+            }
+        }
     }
     class Score
     {
@@ -74,9 +92,21 @@ namespace Ded.Wordox
         }
         public PlayerScore Current { get { return current; } }
         public PlayerScore Other { get { return other; } }
+        public void Write(Player currentPlayer)
+        {
+            using (new DisposableColor(PlayerScore.GetColor(currentPlayer)))
+                Console.Write(current);
+            Console.Write(" / ");
+            using (new DisposableColor(PlayerScore.GetColor(currentPlayer == Player.First ? Player.Second : Player.First)))
+                Console.Write(other);
+        }
         public override string ToString()
         {
             return string.Format(CultureInfo.InvariantCulture, "{0} / {1}", current, other);
+        }
+        public Score Skip()
+        {
+            return new Score(other, current);
         }
     }
 }

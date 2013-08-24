@@ -15,8 +15,8 @@ namespace Ded.Wordox
                                              [Values(0, 1)] int s1,
                                              [Values(PlayerScore.WinPoints - 1, PlayerScore.WinPoints)] int p2,
                                              [Values(0, 1)] int s2,
-                                             [Values(false, true)] bool oneFixes,
-                                             [Values(false, true)] bool twoMoreFixes)
+                                             [Values(Fix.None, Fix.Prefix)] Fix oneFixes,
+                                             [Values(Fix.None, Fix.Suffix)] Fix twoMoreFixes)
         {
             var score = new Score(new PlayerScore(p1, s1), new PlayerScore(p2, s2));
             var info = new PlayInfo(vortex, score, oneFixes, twoMoreFixes);
@@ -25,9 +25,9 @@ namespace Ded.Wordox
         [Test] public void TestCompareToWinsFirst()
         {
             var wonScore = new Score(new PlayerScore(PlayerScore.WinPoints - 5), new PlayerScore(PlayerScore.WinPoints));
-            var won = new PlayInfo(false, wonScore, false, false);
+            var won = new PlayInfo(false, wonScore, Fix.None, Fix.None);
             var otherScore = new Score(new PlayerScore(PlayerScore.WinPoints - 5), new PlayerScore(PlayerScore.WinPoints - 1));
-            var other = new PlayInfo(false, otherScore, false, false);
+            var other = new PlayInfo(false, otherScore, Fix.None, Fix.None);
             Assert.Less(0, won.CompareTo(other));
             Assert.Greater(0, other.CompareTo(won));
         }
@@ -48,10 +48,10 @@ namespace Ded.Wordox
         }
         [Test] public void TestCompareWinsFirst([Values(false, true)] bool vortex1,
                                                 [Values(false, true)] bool vortex2,
-                                                [Values(false, true)] bool one1,
-                                                [Values(false, true)] bool two1,
-                                                [Values(false, true)] bool one2,
-                                                [Values(false, true)] bool two2)
+                                                [Values(Fix.None, Fix.Prefix)] Fix one1,
+                                                [Values(Fix.None, Fix.Prefix)] Fix two1,
+                                                [Values(Fix.None, Fix.Prefix)] Fix one2,
+                                                [Values(Fix.None, Fix.Prefix)] Fix two2)
         {
             foreach (ScoreStrategy score in Enum.GetValues(typeof(ScoreStrategy)))
             {
@@ -70,10 +70,10 @@ namespace Ded.Wordox
         }
         [Test] public void TestCompareWinsEquals([Values(false, true)] bool vortex1,
                                                  [Values(false, true)] bool vortex2,
-                                                 [Values(false, true)] bool one1,
-                                                 [Values(false, true)] bool two1,
-                                                 [Values(false, true)] bool one2,
-                                                 [Values(false, true)] bool two2)
+                                                 [Values(Fix.None, Fix.Prefix)] Fix one1,
+                                                 [Values(Fix.None, Fix.Prefix)] Fix two1,
+                                                 [Values(Fix.None, Fix.Prefix)] Fix one2,
+                                                 [Values(Fix.None, Fix.Prefix)] Fix two2)
         {
             foreach (ScoreStrategy score in Enum.GetValues(typeof(ScoreStrategy)))
             {
@@ -106,8 +106,8 @@ namespace Ded.Wordox
             var secondScore = new Score(new PlayerScore(c2), new PlayerScore(p2));
             foreach (bool vortex in new[] { false, true })
                 foreach (WordStrategy word in Enum.GetValues(typeof(WordStrategy)))
-                    foreach (bool oneFixes in new[] { false, true })
-                        foreach (bool twoMoreFixes in new[] { false, true })
+                    foreach (Fix oneFixes in new[] { Fix.None, Fix.All })
+                        foreach (Fix twoMoreFixes in new[] { Fix.None, Fix.All })
                         {
                             var comparer = new PlayInfoComparer(strategy, word);
                             var first = new PlayInfo(vortex, firstScore, oneFixes, twoMoreFixes);
@@ -128,8 +128,8 @@ namespace Ded.Wordox
             foreach (ScoreStrategy scoreStrategy in Enum.GetValues(typeof(ScoreStrategy)))
                 foreach (WordStrategy wordStrategy in Enum.GetValues(typeof(WordStrategy)))
                     foreach (bool vortex in new[] { false, true })
-                        foreach (bool oneFixes in new[] { false, true })
-                            foreach (bool twoMoreFixes in new[] { false, true })
+                        foreach (Fix oneFixes in new[] { Fix.None, Fix.All })
+                            foreach (Fix twoMoreFixes in new[] { Fix.None, Fix.All })
                             {
                                 var comparer = new PlayInfoComparer(scoreStrategy, wordStrategy);
                                 var first = new PlayInfo(vortex, firstScore, oneFixes, twoMoreFixes);
@@ -139,10 +139,10 @@ namespace Ded.Wordox
                                 TestSort(comparer, first, second, expected);
                             }
         }
-        [Test] public void TestCompareWordsNone([Values(false, true)] bool one1,
-                                                [Values(false, true)] bool two1,
-                                                [Values(false, true)] bool one2,
-                                                [Values(false, true)] bool two2)
+        [Test] public void TestCompareWordsNone([Values(Fix.None, Fix.Prefix)] Fix one1,
+                                                [Values(Fix.None, Fix.Prefix)] Fix two1,
+                                                [Values(Fix.None, Fix.Prefix)] Fix one2,
+                                                [Values(Fix.None, Fix.Prefix)] Fix two2)
         {
             var score = new Score(new PlayerScore(10), new PlayerScore(15));
             foreach (bool vortex1 in new[] { false, true })
@@ -169,10 +169,10 @@ namespace Ded.Wordox
         }
         [Test] public void TestCompareWordsNoOneFixes([Values(false, true)] bool vortex1,
                                                       [Values(false, true)] bool vortex2,
-                                                      [Values(false, true)] bool one1,
-                                                      [Values(false, true)] bool two1,
-                                                      [Values(false, true)] bool one2,
-                                                      [Values(false, true)] bool two2)
+                                                      [Values(Fix.None, Fix.Prefix)] Fix one1,
+                                                      [Values(Fix.None, Fix.Prefix)] Fix two1,
+                                                      [Values(Fix.None, Fix.Prefix)] Fix one2,
+                                                      [Values(Fix.None, Fix.Prefix)] Fix two2)
         {
             var score = new Score(new PlayerScore(10), new PlayerScore(15));
             foreach (ScoreStrategy scoreStrategy in Enum.GetValues(typeof(ScoreStrategy)))
@@ -180,7 +180,7 @@ namespace Ded.Wordox
                 var comparer = new PlayInfoComparer(scoreStrategy, WordStrategy.NoOneFixes);
                 var first = new PlayInfo(vortex1, score, one1, two1);
                 var second = new PlayInfo(vortex2, score, one2, two2);
-                int expected = GetExpected(vortex1, vortex2, one1, one2);
+                int expected = GetExpected(vortex1, vortex2, first.HasOneFixes, second.HasOneFixes);
                 Assert.AreEqual(expected, comparer.Compare(first, second));
                 Assert.AreEqual(-expected, comparer.Compare(second, first));
                 TestSort(comparer, first, second, expected);
@@ -188,10 +188,10 @@ namespace Ded.Wordox
         }
         [Test] public void TestCompareWordsNoTwoMoreFixes([Values(false, true)] bool vortex1,
                                                           [Values(false, true)] bool vortex2,
-                                                          [Values(false, true)] bool one1,
-                                                          [Values(false, true)] bool two1,
-                                                          [Values(false, true)] bool one2,
-                                                          [Values(false, true)] bool two2)
+                                                          [Values(Fix.None, Fix.Prefix)] Fix one1,
+                                                          [Values(Fix.None, Fix.Prefix)] Fix two1,
+                                                          [Values(Fix.None, Fix.Prefix)] Fix one2,
+                                                          [Values(Fix.None, Fix.Prefix)] Fix two2)
         {
             var score = new Score(new PlayerScore(10), new PlayerScore(15));
             foreach (ScoreStrategy scoreStrategy in Enum.GetValues(typeof(ScoreStrategy)))
@@ -199,7 +199,7 @@ namespace Ded.Wordox
                 var comparer = new PlayInfoComparer(scoreStrategy, WordStrategy.NoTwoMoreFixes);
                 var first = new PlayInfo(vortex1, score, one1, two1);
                 var second = new PlayInfo(vortex2, score, one2, two2);
-                int expected = GetExpected(vortex1, vortex2, two1, two2);
+                int expected = GetExpected(vortex1, vortex2, first.HasTwoMoreFixes, second.HasTwoMoreFixes);
                 Assert.AreEqual(expected, comparer.Compare(first, second));
                 Assert.AreEqual(-expected, comparer.Compare(second, first));
                 TestSort(comparer, first, second, expected);
@@ -207,10 +207,10 @@ namespace Ded.Wordox
         }
         [Test] public void TestCompareWordsNoFixes([Values(false, true)] bool vortex1,
                                                    [Values(false, true)] bool vortex2,
-                                                   [Values(false, true)] bool one1,
-                                                   [Values(false, true)] bool two1,
-                                                   [Values(false, true)] bool one2,
-                                                   [Values(false, true)] bool two2)
+                                                   [Values(Fix.None, Fix.Prefix)] Fix one1,
+                                                   [Values(Fix.None, Fix.Prefix)] Fix two1,
+                                                   [Values(Fix.None, Fix.Prefix)] Fix one2,
+                                                   [Values(Fix.None, Fix.Prefix)] Fix two2)
         {
             var score = new Score(new PlayerScore(10), new PlayerScore(15));
             foreach (ScoreStrategy scoreStrategy in Enum.GetValues(typeof(ScoreStrategy)))
@@ -218,7 +218,7 @@ namespace Ded.Wordox
                 var comparer = new PlayInfoComparer(scoreStrategy, WordStrategy.NoFixes);
                 var first = new PlayInfo(vortex1, score, one1, two1);
                 var second = new PlayInfo(vortex2, score, one2, two2);
-                int expected = GetExpected(vortex1, vortex2, one1 || two1, one2 || two2);
+                int expected = GetExpected(vortex1, vortex2, first.HasFixes, second.HasFixes);
                 Assert.AreEqual(expected, comparer.Compare(first, second));
                 Assert.AreEqual(-expected, comparer.Compare(second, first));
                 TestSort(comparer, first, second, expected);
@@ -240,8 +240,8 @@ namespace Ded.Wordox
                 {
                     switch (part.Direction)
                     {
-                        case Direction.Bottom:
-                            cell = cell.Bottom;
+                        case Direction.Down:
+                            cell = cell.Down;
                             break;
                         case Direction.Right:
                             cell = cell.Right;
