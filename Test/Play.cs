@@ -46,20 +46,47 @@ namespace Ded.Wordox
                 Assert.IsTrue(ReferenceEquals(expected < 0 ? first : second, list[1]));
             }
         }
-        [Test] public void TestCompareWinsFirst()
+        [Test] public void TestCompareWinsFirst([Values(false, true)] bool vortex1,
+                                                [Values(false, true)] bool vortex2,
+                                                [Values(false, true)] bool one1,
+                                                [Values(false, true)] bool two1,
+                                                [Values(false, true)] bool one2,
+                                                [Values(false, true)] bool two2)
         {
             foreach (ScoreStrategy score in Enum.GetValues(typeof(ScoreStrategy)))
             {
                 foreach (WordStrategy word in Enum.GetValues(typeof(WordStrategy)))
                 {
                     var wonScore = new Score(new PlayerScore(20), new PlayerScore(25));
-                    var won = new PlayInfo(false, wonScore, false, false);
+                    var won = new PlayInfo(vortex1, wonScore, one1, two1);
                     var otherScore = new Score(new PlayerScore(20), new PlayerScore(24));
-                    var other = new PlayInfo(false, otherScore, false, false);
+                    var other = new PlayInfo(vortex2, otherScore, one2, two2);
                     var comparer = new PlayInfoComparer(score, word);
                     Assert.Less(0, comparer.Compare(won, other));
                     Assert.Greater(0, comparer.Compare(other, won));
                     TestSort(comparer, won, other, 1);
+                }
+            }
+        }
+        [Test] public void TestCompareWinsEquals([Values(false, true)] bool vortex1,
+                                                 [Values(false, true)] bool vortex2,
+                                                 [Values(false, true)] bool one1,
+                                                 [Values(false, true)] bool two1,
+                                                 [Values(false, true)] bool one2,
+                                                 [Values(false, true)] bool two2)
+        {
+            foreach (ScoreStrategy score in Enum.GetValues(typeof(ScoreStrategy)))
+            {
+                foreach (WordStrategy word in Enum.GetValues(typeof(WordStrategy)))
+                {
+                    var firstScore = new Score(new PlayerScore(20), new PlayerScore(25));
+                    var first = new PlayInfo(vortex1, firstScore, one1, two1);
+                    var secondScore = new Score(new PlayerScore(19), new PlayerScore(26));
+                    var second = new PlayInfo(vortex2, secondScore, one2, two2);
+                    var comparer = new PlayInfoComparer(score, word);
+                    Assert.AreEqual(-1, comparer.Compare(first, second));
+                    Assert.AreEqual(1, comparer.Compare(second, first));
+                    TestSort(comparer, first, second, -1);
                 }
             }
         }

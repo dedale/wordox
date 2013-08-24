@@ -443,7 +443,7 @@ namespace Ded.Wordox
         {
         }
         public ConstantList<PlayPath> Valids { get { return valids; } }
-        private Tuple<Fix, Fix> GetFixes(WordPart part, WordPart future)
+        private static Tuple<Fix, Fix> GetFixes(WordPart part, WordPart future)
         {
             Fix one = Fix.None;
             Fix twoMore = Fix.None;
@@ -461,7 +461,7 @@ namespace Ded.Wordox
                 twoMore |= Fix.Suffix;
             return new Tuple<Fix, Fix>(one, twoMore);
         }
-        private Tuple<Fix, Fix> GetFixes(WordPart part, IEnumerable<PlayPath> allValids)
+        private static Tuple<Fix, Fix> GetFixes(WordPart part, IEnumerable<PlayPath> allValids)
         {
             Fix one = Fix.None;
             Fix twoMore = Fix.None;
@@ -586,6 +586,8 @@ namespace Ded.Wordox
         }
         public int Compare(PlayInfo x, PlayInfo y)
         {
+            if (x.Wins && y.Wins)
+                return x.Points.CompareTo(y.Points);
             if (x.Wins ^ y.Wins)
                 return x.Wins ? 1 : -1;
             int result = CompareWords(x, y);

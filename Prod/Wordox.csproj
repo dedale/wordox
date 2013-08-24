@@ -5,7 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{4A0F51C8-9818-4B0E-B718-2E58511923A0}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Ded.Wordox</RootNamespace>
     <AssemblyName>Ded.Wordox</AssemblyName>
@@ -37,6 +37,9 @@
   <PropertyGroup>
     <AssemblyOriginatorKeyFile>..\key.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -64,6 +67,7 @@
     </Compile>
     <Compile Include="Common.cs" />
     <Compile Include="Play.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Score.cs" />
     <Compile Include="WordDownloader.cs" />
     <Compile Include="WordGraph.cs" />
