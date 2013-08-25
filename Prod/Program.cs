@@ -85,11 +85,32 @@ namespace Ded.Wordox
     class Shell
     {
         #region Fields
+        private readonly string culture;
         private readonly RandomValues random;
         private readonly WordGraph graph;
         private Board board;
         #endregion
         #region Private stuff
+        private static WordGraph GetGraph(string name)
+        {
+            switch (name)
+            {
+                case "fr":
+                    return WordGraph.French;
+                case "en":
+                    return WordGraph.English;
+            }
+            throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "No dictionary found for {0}", name));
+        }
+        private WordGraph GetGraph()
+        {
+            if (culture == null)
+            {
+                string name = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+                return GetGraph(name);
+            }
+            return GetGraph(culture.ToLowerInvariant());
+        }
         private static string ReadLine()
         {
             string line = Console.ReadLine();
@@ -315,11 +336,12 @@ namespace Ded.Wordox
             }
         }
         #endregion
-        public Shell()
+        public Shell(string culture = null)
         {
+            this.culture = culture;
             random = new RandomValues();
             Console.Write("Loading");
-            graph = Progress.Wait<WordGraph>(() => WordGraph.French);
+            graph = Progress.Wait<WordGraph>(GetGraph);
             board = new Board();
         }
         public void Run()
@@ -382,10 +404,17 @@ namespace Ded.Wordox
     class Program
     {
         [STAThread]
-        public static int Main(/*params string[] args*/)
+        public static int Main(params string[] args)
         {
+#if DEBUG
+            if (Environment.UserName.Equals("ded", StringComparison.OrdinalIgnoreCase))
+            {
+                if (args == null || args.Length == 0)
+                    args = new[] { "en" };
+            }
+#endif
             Console.ForegroundColor = ConsoleColor.Gray;
-            new Shell().Run();
+            new Shell(args.Length == 1 ? args[0] : null).Run();
             if (System.Diagnostics.Debugger.IsAttached)
             {
                 Console.Write("Press a key");
