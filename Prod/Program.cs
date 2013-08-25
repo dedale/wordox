@@ -132,25 +132,26 @@ namespace Ded.Wordox
                 return new string(current.ToArray()) + newRack;
             return null;
         }
-        private Rack ReadRack(IList<char> list)
+        private Rack ReadRack(IList<char> list, Player current)
         {
             string newRack = null;
             while (!Rack.Check(newRack))
             {
-                using (new DisposableColor(ConsoleColor.Green))
+                using (DisposableColor.Prompt)
                     Console.Write("rack? ");
                 if (list.Count > 0)
                 {
                     Console.Write("[");
-                    using (new DisposableColor(ConsoleColor.Yellow))
+                    using (PlayerScore.GetCurrentColor(current))
                         Console.Write(new string(list.ToArray()));
                     Console.Write("] ");
                 }
-                newRack = GetNewRack(graph, list, ReadLine());
+                using (PlayerScore.GetCurrentColor(current))
+                    newRack = GetNewRack(graph, list, ReadLine());
             }
             using (new DisposableColor(ConsoleColor.White))
                 Console.Write("rack:");
-            using (new DisposableColor(ConsoleColor.Yellow))
+            using (PlayerScore.GetCurrentColor(current))
                 Console.WriteLine(" " + newRack);
             Console.WriteLine();
             return new Rack(newRack);
@@ -276,7 +277,7 @@ namespace Ded.Wordox
         private PlayPath ReadMove(Board board, Rack rack)
         {
             var regex = new Regex(@"^\s*(?<word>[a-z]+)\s*(?<row>\d),(?<column>\d)\s*(?<direction>(down|right|))\s*$", RegexOptions.IgnoreCase);
-            using (new DisposableColor(ConsoleColor.Green))
+            using (DisposableColor.Prompt)
                 Console.Write("move? ");
             Console.Write("[word r,c down|right] [play|guess|skip] ");
             while (true)
@@ -362,7 +363,7 @@ namespace Ded.Wordox
                         Console.WriteLine();
 
                         if (!skipped)
-                            rack = ReadRack(pending);
+                            rack = ReadRack(pending, board.Current);
                         skipped = false;
                         PlayPath move = ReadMove(board, rack);
                         if (move == null)
@@ -371,7 +372,7 @@ namespace Ded.Wordox
                             skipped = true;
                             continue;
                         }
-                        using (new DisposableColor(ConsoleColor.Yellow))
+                        using (PlayerScore.GetCurrentColor(board.Current))
                             move.Write();
                         board = board.Play(move);
                         pending.Clear();
@@ -413,7 +414,7 @@ namespace Ded.Wordox
             if (Environment.UserName.Equals("ded", StringComparison.OrdinalIgnoreCase))
             {
                 if (args == null || args.Length == 0)
-                    args = new[] { "en" };
+                    args = new[] { "fr" };
             }
 #endif
             Console.ForegroundColor = ConsoleColor.Gray;

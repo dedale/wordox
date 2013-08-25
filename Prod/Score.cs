@@ -69,10 +69,18 @@ namespace Ded.Wordox
                 case Player.First:
                     return ConsoleColor.Blue;
                 case Player.Second:
-                    return ConsoleColor.Magenta;
+                    return ConsoleColor.Green;
                 default:
                     return Console.ForegroundColor;
             }
+        }
+        public static IDisposable GetCurrentColor(Player current)
+        {
+            return new DisposableColor(PlayerScore.GetColor(current));
+        }
+        public static IDisposable GetOtherColor(Player current)
+        {
+            return GetCurrentColor(current == Player.First ? Player.Second : Player.First);
         }
     }
     class Score
@@ -94,10 +102,10 @@ namespace Ded.Wordox
         public PlayerScore Other { get { return other; } }
         public void Write(Player currentPlayer)
         {
-            using (new DisposableColor(PlayerScore.GetColor(currentPlayer)))
+            using (PlayerScore.GetCurrentColor(currentPlayer))
                 Console.Write(current);
             Console.Write(" / ");
-            using (new DisposableColor(PlayerScore.GetColor(currentPlayer == Player.First ? Player.Second : Player.First)))
+            using (PlayerScore.GetOtherColor(currentPlayer))
                 Console.Write(other);
         }
         public override string ToString()

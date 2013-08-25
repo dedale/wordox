@@ -178,6 +178,7 @@ namespace Ded.Wordox
             Dispose(true);
             GC.SuppressFinalize(this);
         }
+        public static IDisposable Prompt { get { return new DisposableColor(ConsoleColor.Yellow); } }
     }
     class Board
     {
