@@ -472,7 +472,11 @@ namespace Ded.Wordox
             for (int i = 0; i < part.Word.Length; i++)
             {
                 if (board[cell.Row][cell.Column] != Empty)
+                {
+                    if (board[cell.Row][cell.Column] != part.Word[i])
+                        throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Cannot play {0} at {1}", part.Word, part.First));
                     excluded.Add(cell);
+                }
                 if (i == part.Word.Length - 1)
                     break;
                 switch (part.Direction)

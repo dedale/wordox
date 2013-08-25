@@ -7,6 +7,8 @@ using System.Text.RegularExpressions;
 
 namespace Ded.Wordox
 {
+    // en : http://scrabblecheat.com/words-that-start-with/A .. Z
+    // it? : http://www.isc.ro/en/commands/lists.html
     class WordContent
     {
         #region Fields

@@ -140,7 +140,7 @@ namespace Ded.Wordox
                     throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Unknown direction : {0}", direction), "direction");
             }
         }
-        private bool CanPlay(string word, int row, int column, Direction direction)
+        private bool UseCenter(string word, int row, int column, Direction direction)
         {
             switch (direction)
             {
@@ -164,11 +164,11 @@ namespace Ded.Wordox
         {
             var board = new Board();
             bool outOfBoard = OutOfBoard(word, row, column, direction);
-            bool canPlay = CanPlay(word, row, column, direction);
+            bool useCenter = UseCenter(word, row, column, direction);
             Action action = () => board = board.Play(new WordPart(word, new Cell(row, column), direction));
             if (outOfBoard)
                 Assert.Throws<OutOfBoardException>(new TestDelegate(action));
-            else if (!canPlay)
+            else if (!useCenter)
                 Assert.Throws<ArgumentException>(new TestDelegate(action));
             else
                 action();
@@ -229,7 +229,7 @@ namespace Ded.Wordox
             else
                 Assert.IsNull(after);
         }
-        public void TestSkip()
+        [Test] public void TestSkip()
         {
             var board = new Board();
             var part1 = new WordPart("TRICHE", new Cell(4, 0), Direction.Right);
@@ -241,8 +241,21 @@ namespace Ded.Wordox
             board = board.Skip();
             Assert.AreEqual(first, board.Score.Current);
             Assert.AreEqual(second, board.Score.Other);
-
         }
+        [Test] public void TestGetExcluded()
+        {
+            var graph = WordGraph.French;
+            var board = new Board();
+            var rack = new Rack("MEREOT");
+
+            var part1 = new WordPart("MERE", new Cell(4, 1), Direction.Right);
+            board = board.Play(part1);
+
+            rack = new Rack("OTMSZZ");
+            var part2 = new WordPart("MOTS", new Cell(1, 4), Direction.Down);
+            Assert.Throws<ArgumentException>(() => board.GetExcluded(part2));
+        }
+
     }
     [TestFixture]
     public class AITest

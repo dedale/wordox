@@ -100,10 +100,21 @@ namespace Ded.Wordox
             }
             return line;
         }
+        internal static string GetNewRack(WordGraph graph, IList<char> current, string line)
+        {
+            if (line == null)
+                return null;
+            string newRack = line.Trim().ToUpperInvariant();
+            if (newRack.Contains("*", StringComparison.OrdinalIgnoreCase))
+                return graph.GetRandom(new string(current.ToArray()));
+            if (newRack.Length + current.Count == Rack.Size)
+                return new string(current.ToArray()) + newRack;
+            return null;
+        }
         private Rack ReadRack(IList<char> list)
         {
             string newRack = null;
-            while (string.IsNullOrEmpty(newRack) || newRack.Length != Rack.Size)
+            while (!Rack.Check(newRack))
             {
                 using (new DisposableColor(ConsoleColor.Green))
                     Console.Write("rack? ");
@@ -114,24 +125,13 @@ namespace Ded.Wordox
                         Console.Write(new string(list.ToArray()));
                     Console.Write("] ");
                 }
-                newRack = ReadLine();
-                if (newRack != null)
-                {
-                    newRack = newRack.Trim().ToUpperInvariant();
-                    if (newRack.Contains("*", StringComparison.OrdinalIgnoreCase))
-                        newRack = graph.GetRandom(new string(list.ToArray()));
-                    else if (newRack.Length + list.Count == Rack.Size)
-                        newRack = new string(list.ToArray()) + newRack;
-                    if (newRack.Length == Rack.Size)
-                    {
-                        using (new DisposableColor(ConsoleColor.White))
-                            Console.Write("rack:");
-                        using (new DisposableColor(ConsoleColor.Yellow))
-                            Console.WriteLine(" " + newRack);
-                        Console.WriteLine();
-                    }
-                }
+                newRack = GetNewRack(graph, list, ReadLine());
             }
+            using (new DisposableColor(ConsoleColor.White))
+                Console.Write("rack:");
+            using (new DisposableColor(ConsoleColor.Yellow))
+                Console.WriteLine(" " + newRack);
+            Console.WriteLine();
             return new Rack(newRack);
         }
         private PlayPath FindMove(Rack rack)
@@ -159,7 +159,13 @@ namespace Ded.Wordox
             }
             return new PlayPath(part, new WordPartCollection(extras.ToConstant()), played, pending.ToConstant());
         }
-        private static bool Check(Board board, Rack rack, PlayPath path)
+        private static void Log(Exception e)
+        {
+            using (new DisposableColor(ConsoleColor.Red))
+                Console.WriteLine("{0}: {1}", e.GetType().Name, e.Message);
+            Console.WriteLine();
+        }
+        private static bool Check(Board board, Rack rack, PlayPath path, bool verbose = true)
         {
             try
             {
@@ -173,17 +179,79 @@ namespace Ded.Wordox
                 }
                 return true;
             }
+            catch (OutOfBoardException e)
+            {
+                if (verbose)
+                    Log(e);
+                return false;
+            }
             catch (ArgumentException e)
             {
-                using (new DisposableColor(ConsoleColor.Red))
-                    Console.WriteLine("{0}: {1}", e.GetType().Name, e.Message);
-                Console.WriteLine();
+                if (verbose)
+                    Log(e);
                 return false;
             }
         }
+        private static Direction? Parse(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return null;
+            return (Direction)Enum.Parse(typeof(Direction), value);
+        }
+        private static PlayPath GetPath(Board board, Rack rack, string word, Cell cell, Direction? direction)
+        {
+            var directions = new List<Direction>();
+            if (!direction.HasValue)
+                directions.AddRange(new[] { Direction.Down, Direction.Right });
+            else
+                directions.Add(direction.Value);
+            var paths = new List<PlayPath>();
+            foreach (Direction d in directions)
+            {
+                try
+                {
+                    var part = new WordPart(word, cell, d);
+                    PlayPath path = GetPath(board, rack, part);
+                    if (Check(board, rack, path, false))
+                        paths.Add(path);
+                }
+                catch (OutOfBoardException)
+                {
+                }
+            }
+            if (paths.Count == 1)
+                return paths[0];
+            if (paths.Count > 1)
+                Log(new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Cannot guess direction to play {0} at {1}", word, cell)));
+            else
+                Log(new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Cannot play {0} at {1}", word, cell)));
+            return null;
+        }
+        private static Cell GetCell(int row, int column)
+        {
+            try
+            {
+                return new Cell(row, column);
+            }
+            catch (OutOfBoardException e)
+            {
+                Log(e);
+                return null;
+            }
+        }
+        private static PlayPath GetPath(Board board, Rack rack, string word, int row, int column, Direction? direction)
+        {
+            Cell cell = GetCell(row, column);
+            if (cell == null)
+                return null;
+            PlayPath path = GetPath(board, rack, word, cell, direction);
+            if (path == null)
+                return null;
+            return path;
+        }
         private PlayPath ReadMove(Board board, Rack rack)
         {
-            var regex = new Regex(@"^\s*(?<word>[a-z]+)\s*(?<row>\d),(?<column>\d)\s*(?<direction>(down|right))\s*$", RegexOptions.IgnoreCase);
+            var regex = new Regex(@"^\s*(?<word>[a-z]+)\s*(?<row>\d),(?<column>\d)\s*(?<direction>(down|right|))\s*$", RegexOptions.IgnoreCase);
             using (new DisposableColor(ConsoleColor.Green))
                 Console.Write("move? ");
             Console.Write("[word r,c down|right] [play|guess|skip] ");
@@ -226,10 +294,9 @@ namespace Ded.Wordox
                         string word = m.Groups["word"].Value;
                         int row = int.Parse(m.Groups["row"].Value, CultureInfo.InvariantCulture);
                         int column = int.Parse(m.Groups["column"].Value, CultureInfo.InvariantCulture);
-                        Direction direction = (Direction)Enum.Parse(typeof(Direction), m.Groups["direction"].Value);
-                        var part = new WordPart(word, new Cell(row, column), direction);
-                        PlayPath path = GetPath(board, rack, part);
-                        if (Check(board, rack, path))
+                        Direction? direction = Parse(m.Groups["direction"].Value);
+                        PlayPath path = GetPath(board, rack, word, row, column, direction);
+                        if (path != null)
                         {
                             Console.WriteLine();
                             return path;

@@ -180,4 +180,17 @@ namespace Ded.Wordox
                 }
         }
     }
+    [TestFixture]
+    public class RackTest
+    {
+        [CLSCompliant(false)]
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("ABCDE")]
+        [TestCase("1ABCDE")]
+        public void TestCheck(string value)
+        {
+            Assert.IsFalse(Rack.Check(value));
+        }
+    }
 }

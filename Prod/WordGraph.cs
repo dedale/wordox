@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Ded.Wordox
@@ -378,7 +379,7 @@ namespace Ded.Wordox
         private readonly string value;
         #endregion
         public Rack(string rack)
-            : this(new ConstantList<char>(rack.ToArray()))
+            : this(new ConstantList<char>(rack.ToUpperInvariant().ToArray()))
         {
         }
         public Rack(ConstantList<char> rack)
@@ -393,6 +394,10 @@ namespace Ded.Wordox
         public override string ToString()
         {
             return value;
+        }
+        public static bool Check(string rack)
+        {
+            return rack != null && rack.Length == Rack.Size && Regex.IsMatch(rack, @"^[a-z]{6}$", RegexOptions.IgnoreCase);
         }
     }
     class AI
