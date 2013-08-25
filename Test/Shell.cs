@@ -56,5 +56,14 @@ namespace Ded.Wordox
             string rack = Shell.GetNewRack(graph, list, append);
             Assert.AreEqual(ok, Rack.Check(rack));
         }
+        [Test] public void TestGetPathArgumentException()
+        {
+            var board = new Board();
+            var part1 = new WordPart("YEWS", new Cell(4, 4), Direction.Right);
+            board = board.Play(part1);
+            var rack = new Rack("ESZZZZ");
+            PlayPath path2 = Shell.GetPath(board, rack, "YES", 4, 4, null);
+            Assert.IsNotNull(path2);
+        }
     }
 }

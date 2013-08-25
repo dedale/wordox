@@ -236,6 +236,9 @@ namespace Ded.Wordox
                     if (Check(board, rack, path, false))
                         paths.Add(path);
                 }
+                catch (ArgumentException)
+                {
+                }
                 catch (OutOfBoardException)
                 {
                 }
@@ -260,7 +263,7 @@ namespace Ded.Wordox
                 return null;
             }
         }
-        private static PlayPath GetPath(Board board, Rack rack, string word, int row, int column, Direction? direction)
+        internal static PlayPath GetPath(Board board, Rack rack, string word, int row, int column, Direction? direction = null)
         {
             Cell cell = GetCell(row, column);
             if (cell == null)
