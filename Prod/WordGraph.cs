@@ -178,6 +178,7 @@ namespace Ded.Wordox
     {
         #region Fields
         private static readonly Lazy<WordGraph> french = new Lazy<WordGraph>(GetFrench);
+        private static readonly Lazy<WordGraph> english = new Lazy<WordGraph>(GetEnglish);
         private readonly Dictionary<string, HashSet<string>> valids;
         private readonly Dictionary<string, WordVertex> vertices;
         private readonly Dictionary<char, int> counts;
@@ -187,15 +188,20 @@ namespace Ded.Wordox
         private readonly int total;
         #endregion
         #region Private stuff
-        private static IEnumerable<string> GetAllWords()
+        private static IEnumerable<string> GetAllWords(string culture)
         {
             var resources = new AssemblyResources(typeof(WordDownloader), "Ded.Wordox.Resources.");
-            string frenchContent = resources.GetContent("fr.txt");
+            string frenchContent = resources.GetContent(culture + ".txt");
             return frenchContent.Split(new[] { "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
         }
         private static WordGraph GetFrench()
         {
-            var words = GetAllWords();
+            var words = GetAllWords("fr");
+            return new WordGraph(words);
+        }
+        private static WordGraph GetEnglish()
+        {
+            var words = GetAllWords("en");
             return new WordGraph(words);
         }
         private void AddPrefixEdge(WordVertex vertex)
@@ -336,6 +342,10 @@ namespace Ded.Wordox
         public static WordGraph French
         {
             get { return french.Value; }
+        }
+        public static WordGraph English
+        {
+            get { return english.Value; }
         }
         public string GetRandom(string pending = "")
         {

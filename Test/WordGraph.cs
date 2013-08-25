@@ -66,7 +66,18 @@ namespace Ded.Wordox
                     valid++;
             Assert.AreEqual(163028, valid);
         }
-        [Test] public void TestGetValids()
+        [Test] public void TestEnglish()
+        {
+            var graph = WordGraph.English;
+            Assert.AreEqual(453169, graph.Count);
+            int valid = 0;
+            foreach (WordVertex vertex in graph.Vertices)
+                if (vertex.IsValid)
+                    valid++;
+            Assert.AreEqual(108573, valid);
+        }
+        [Test]
+        public void TestGetValids()
         {
             var graph = new WordGraph(new[] { "ET", "TE", "TA", "EN" });
             var valids = graph.GetValids("ET").ToDictionary(vw => vw.Word);

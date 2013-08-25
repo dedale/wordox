@@ -45,17 +45,18 @@ namespace Ded.Wordox
             throw new InvalidOperationException("Move not found");
         }
         #endregion
-        [Test] public void TestPlay()
+        [Test] public void TestPlayFrench()
         {
-            for (int i = 0; i < 100; i++)
-            {
-                var game = new Game();
-                game.Play();
-                if (i == 0)
-                    break;
-            }
+            var game = new Game();
+            game.Play();
         }
-        [Test] public void TestFixes1()
+        [Test] public void TestPlayEnglish()
+        {
+            var game = new Game(new RandomValues(), WordGraph.English);
+            game.Play();
+        }
+        [Test]
+        public void TestFixes1()
         {
             var graph = WordGraph.French;
             var board = new Board();

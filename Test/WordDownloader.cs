@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using System;
+using System.IO;
 using System.Linq;
 
 namespace Ded.Wordox
@@ -71,6 +72,29 @@ namespace Ded.Wordox
             Assert.IsTrue(wc.IsFull);
             foreach (string w in wc.Words)
                 Assert.AreEqual(9, w.Length);
+        }
+    }
+    [TestFixture]
+    public class English
+    {
+        private static int DicoCompare(string first, string second)
+        {
+            int result = first.Length.CompareTo(second.Length);
+            if (result == 0)
+                result = first.CompareTo(second);
+            return result;
+        }
+        [Test] public void TestUnraw()
+        {
+            const string rawPath = @"D:\home\prog\git\hub\dedale\wordox\Prod\Resources\en-raw.txt";
+            const string dicoPath = @"D:\home\prog\git\hub\dedale\wordox\Prod\Resources\en.txt";
+            if (!File.Exists(dicoPath))
+            {
+                var rawLines = File.ReadAllLines(rawPath);
+                var up = (from l in rawLines select l.ToUpperInvariant()).ToList();
+                up.Sort(DicoCompare);
+                File.WriteAllLines(dicoPath, up.ToArray());
+            }
         }
     }
 }
