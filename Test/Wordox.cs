@@ -55,8 +55,7 @@ namespace Ded.Wordox
             var game = new Game(new RandomValues(), WordGraph.English);
             game.Play();
         }
-        [Test]
-        public void TestFixes1()
+        [Test] public void TestFixes1()
         {
             var graph = WordGraph.French;
             var board = new Board();
@@ -99,7 +98,7 @@ namespace Ded.Wordox
                     || Direction.Right != move.Item2.Main.Direction)
                     continue;
                 Assert.IsTrue(move.Item1.HasFixes);
-                Assert.IsTrue(move.Item1.HasTwoMoreFixes);
+                Assert.IsFalse(move.Item1.HasTwoMoreFixes);
             }
         }
         [Test] public void TestPlayIgnoreExtra1()
@@ -138,6 +137,24 @@ namespace Ded.Wordox
                 Assert.AreEqual(twoMore, valid.TwoMoreFixes);
                 break;
             }
+        }
+        [Test] public void TestPlayFindAll1()
+        {
+            var plays = new List<Tuple<string, string, Cell, Direction>>();
+            plays.Add(new Tuple<string, string, Cell, Direction>("AEBWOM", "AME", new Cell(4, 3), Direction.Right));
+            plays.Add(new Tuple<string, string, Cell, Direction>("BWOALA", "LOBA", new Cell(3, 3), Direction.Right));
+            plays.Add(new Tuple<string, string, Cell, Direction>("WAULOB", "LOBA", new Cell(4, 2), Direction.Down));
+
+            TestPlayIgnoreExtra(plays);
+        }
+        [Test] public void TestPlayFindAll2()
+        {
+            var plays = new List<Tuple<string, string, Cell, Direction>>();
+            plays.Add(new Tuple<string, string, Cell, Direction>("AATBOW", "BOA", new Cell(4, 4), Direction.Right));
+            plays.Add(new Tuple<string, string, Cell, Direction>("ATWEUO", "TAO", new Cell(3, 6), Direction.Right));
+            plays.Add(new Tuple<string, string, Cell, Direction>("WEUSEN", "NUEES", new Cell(2,3), Direction.Right));
+            
+            TestPlayIgnoreExtra(plays);
         }
     }
 }

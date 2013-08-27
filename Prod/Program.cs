@@ -93,11 +93,11 @@ namespace Ded.Wordox
         #region Private stuff
         private static WordGraph GetGraph(string name)
         {
-            switch (name)
+            switch (name.ToUpperInvariant())
             {
-                case "fr":
+                case "FR":
                     return WordGraph.French;
-                case "en":
+                case "EN":
                     return WordGraph.English;
             }
             throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "No dictionary found for {0}", name));
@@ -109,7 +109,7 @@ namespace Ded.Wordox
                 string name = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
                 return GetGraph(name);
             }
-            return GetGraph(culture.ToLowerInvariant());
+            return GetGraph(culture);
         }
         private static string ReadLine()
         {

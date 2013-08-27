@@ -215,6 +215,10 @@ namespace Ded.Wordox
             {
                 return GetEnumerator();
             }
+            public override string ToString()
+            {
+                return new string(Choices.ToArray());
+            }
         }
         #endregion
         #region class Choices
@@ -405,30 +409,33 @@ namespace Ded.Wordox
                         break;
                 }
 
-                if (fix == Fix.Prefix)
+                if (!validOnly)
                 {
-                    if (path.Main.Direction == Direction.Right)
+                    if (fix == Fix.Prefix)
                     {
-                        if (origin.Main.First.Column - path.Main.First.Column >= 2 || path.Main.First.Column == 0)
-                            break;
+                        if (path.Main.Direction == Direction.Right)
+                        {
+                            if (origin.Main.First.Column - path.Main.First.Column >= 2 || path.Main.First.Column == 0)
+                                break;
+                        }
+                        else
+                        {
+                            if (origin.Main.First.Row - path.Main.First.Row >= 2 || path.Main.First.Row == 0)
+                                break;
+                        }
                     }
                     else
                     {
-                        if (origin.Main.First.Row - path.Main.First.Row >= 2 || path.Main.First.Row == 0)
-                            break;
-                    }
-                }
-                else
-                {
-                    if (path.Main.Direction == Direction.Right)
-                    {
-                        if (path.Main.Last.Column - origin.Main.Last.Column >= 2 || path.Main.Last.Column == 8)
-                            break;
-                    }
-                    else
-                    {
-                        if (path.Main.Last.Row - origin.Main.Last.Row >= 2 || path.Main.Last.Row == 8)
-                            break;
+                        if (path.Main.Direction == Direction.Right)
+                        {
+                            if (path.Main.Last.Column - origin.Main.Last.Column >= 2 || path.Main.Last.Column == 8)
+                                break;
+                        }
+                        else
+                        {
+                            if (path.Main.Last.Row - origin.Main.Last.Row >= 2 || path.Main.Last.Row == 8)
+                                break;
+                        }
                     }
                 }
 
