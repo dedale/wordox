@@ -398,21 +398,12 @@ namespace Ded.Wordox
                 Fix fix = fixCell.Item1;
                 Cell cell = fixCell.Item2;
 
-                if (fix == Fix.Prefix)
-                {
-                    if (min[path.Main.Direction].Contains(0))
-                        break;
-                }
-                else if (fix == Fix.Suffix)
-                {
-                    if (max[path.Main.Direction].Contains(0))
-                        break;
-                }
-
                 if (!validOnly)
                 {
                     if (fix == Fix.Prefix)
                     {
+                        if (min[path.Main.Direction].Contains(0))
+                            break;
                         if (path.Main.Direction == Direction.Right)
                         {
                             if (origin.Main.First.Column - path.Main.First.Column >= 2 || path.Main.First.Column == 0)
@@ -426,6 +417,8 @@ namespace Ded.Wordox
                     }
                     else
                     {
+                        if (max[path.Main.Direction].Contains(0))
+                            break;
                         if (path.Main.Direction == Direction.Right)
                         {
                             if (path.Main.Last.Column - origin.Main.Last.Column >= 2 || path.Main.Last.Column == 8)
